@@ -1,0 +1,18 @@
+'use strict';
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const dir=path.resolve(__dirname,'..'),template=JSON.parse(fs.readFileSync(path.join(dir,'templates/book.json'))),{validate}=require('./validate-book.cjs');
+const clone=()=>structuredClone(template),errors=(mutate,production=false)=>{const b=clone();mutate(b);return validate(b,dir,production)};
+assert.deepEqual(validate(template,dir),[]);
+assert.deepEqual(validate(template,dir,true),[]);
+assert(errors(b=>b.spreadOrder.push(b.spreadOrder[0])).some(e=>e.includes('exactly once')));
+assert(errors(b=>b.spreads[0].chapterId='missing').some(e=>e.includes('unknown chapterId')));
+assert(errors(b=>b.assets[0].file='../../outside').some(e=>e.includes('escapes')));
+assert(errors(b=>b.spreads[0].passages[0].audio='missing.mp3').some(e=>e.includes('missing')));
+assert(errors(b=>b.spreads[0].scene[0].id='').some(e=>e.includes('stable id')));
+assert(errors(b=>b.spreads[0].scene[0].layer='ceiling').some(e=>e.includes('invalid layer')));
+assert(errors(b=>b.spreads[0].focalSubject='',true).some(e=>e.includes('focalSubject')));
+assert(errors(b=>b.spreads[0].scaleHierarchy=[],true).some(e=>e.includes('scaleHierarchy')));
+assert(errors(b=>b.chapters.push({id:'unused',title:'Unused'})).some(e=>e.includes('chapter has no spread')));
+const duplicate=errors(b=>{b.spreads[0].scene.push({...b.spreads[0].scene[0]})});
+assert(duplicate.some(e=>e.includes('Duplicate scene item')));
+console.log('PASS template in draft/production and 10 negative validation cases');

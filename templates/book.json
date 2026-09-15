@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "title": "Untitled Paper Storybook",
+  "chapters": [
+    { "id": "chapter-01", "title": "The Discovery" }
+  ],
+  "spreadOrder": ["chapter-01-spread-01"],
+  "assets": [
+    { "id": "page-ground", "type": "page-art", "file": "templates/placeholders/page-ground.txt" },
+    { "id": "subject-standee", "type": "standee", "file": "templates/placeholders/subject-standee.txt" }
+  ],
+  "spreads": [
+    {
+      "id": "chapter-01-spread-01",
+      "chapterId": "chapter-01",
+      "title": "A First Glimpse",
+      "focalSubject": "subject-standee",
+      "scaleHierarchy": ["subject-standee"],
+      "pageArt": { "left": "page-ground", "right": "page-ground" },
+      "scene": [
+        {
+          "id": "subject-left",
+          "assetId": "subject-standee",
+          "side": "left",
+          "layer": "midground",
+          "anchor": [0.55, 0.48],
+          "maxWidth": 0.25,
+          "maxHeight": 0.55
+        }
+      ],
+      "passages": [
+        {
+          "id": "passage-001",
+          "speaker": "Narrator",
+          "text": "Replace this sample with the adapted passage.",
+          "audio": null
+        }
+      ]
+    }
+  ]
+}
