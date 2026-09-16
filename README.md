@@ -6,6 +6,7 @@ A chapter holds multiple spreads. A spread is an open left/right page pair. Prin
 
 ## What it covers
 
+- **World reconnaissance first**: inventory this world's characters, locations and events, bind every chapter to them, and take each character's own atom cover as its identity reference.
 - **Versioned book contract**: schema v2 for new production books, with schema v1 compatibility for existing books.
 - **Neutral page-turn state starter**: ordered spread navigation, forward/backward page ownership, input lock and deterministic turn seeking without story-specific Three.js geometry.
 - **Scene composition contract**: ground-only page surfaces plus explicit background, midground and foreground standees, with documented sparse-scene exceptions.
@@ -20,12 +21,14 @@ A chapter holds multiple spreads. A spread is an open left/right page pair. Prin
 
 ```text
 SKILL.md                              production workflow and blocking requirements
+references/world-recon.md             Step 0: read the world, bind chapters, source identity references
 references/engineering.md            rendering, navigation, composition and failure patterns
 references/runtime-contract.md       deterministic renderer adapter and ownership rules
 references/asset-pipeline.md          cutout, mask, bounds and provenance pipeline
 references/expansion-and-release.md   chapter expansion and live-publication checks
 references/qa-gates.md                incremental QA gates and evidence requirements
 scripts/scaffold.mjs                  schema v2 and page-turn state scaffold
+scripts/world-survey.cjs              world inventory, state verdict and binding resolution
 scripts/validate-book-v2.cjs          schema v2 production validator
 scripts/validate-book.cjs             schema v1 validator and v2 dispatcher
 scripts/audit-assets.cjs              asset path, mask, bounds and provenance audit
@@ -36,6 +39,25 @@ templates/book-v2.json                schema v2 neutral contract
 templates/runtime/page-turn-state.mjs neutral page-turn ownership state machine
 templates/book.json                   legacy schema v1 contract
 ```
+
+## Step 0 — read the world before designing in it
+
+A storybook is a work *about* a world. Find out what already exists, then bind the book to it:
+
+```bash
+node scripts/world-survey.cjs --world=/path/to/world
+node scripts/world-survey.cjs --world=/path/to/world --binding=/path/to/data/book.json
+```
+
+The first command inventories the world's atoms by type, reports which have a ready cover, lists the
+works already made from them, and returns a `populated` / `sparse` / `empty` verdict. The second
+resolves a book's `worldBinding` block against that inventory: every chapter must name materials that
+really exist, and every character should have a cover, because that cover is its identity reference.
+
+A **populated** world is consumed: bind chapters to its characters, locations and events. A **sparse**
+world is partly consumed and partly extended. An **empty** world reverses the direction — the book
+creates the world's materials, lists them in `authored[]`, and writes them back as atoms so the next
+work inherits them.
 
 ## Start a new book
 
@@ -92,7 +114,7 @@ These checks complement browser screenshots and human review. Finite collision s
 node scripts/test-skill.cjs
 ```
 
-The suite covers legacy and v2 validators, the neutral page-turn state, forward/backward runtime ownership, endpoint regression rejection and page-depth report rejection.
+The suite covers legacy and v2 validators, world reconnaissance across all three world states, binding resolution, the neutral page-turn state, forward/backward runtime ownership, endpoint regression rejection and page-depth report rejection.
 
 ## Notes
 

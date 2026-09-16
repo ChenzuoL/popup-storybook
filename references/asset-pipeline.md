@@ -17,11 +17,13 @@ Schema v2 standees carry:
 - `maskFile`: audited grayscale mask or alpha diagnostic;
 - `alphaBounds`: normalized visible bounds `[x, y, width, height]`;
 - `role`: background environment, midground character, foreground prop, and so on;
-- `identityReference`: the reference that preserves subject identity;
+- `identityReference`: the reference that preserves subject identity. Source it from this world's own
+  atom cover — see `world-recon.md`. Never invent an identity description when the world already
+  carries the character.
 - `provenance`: `{sourceType, sourceRef, notes}`;
 - optional `sourceImageSize`, `cropRect`, `finalImageSize`, `maxWorldWidth`, `maxWorldHeight`.
 
-`identityReference` and `provenance` are different records. The former explains what the subject should look like; the latter explains where the delivered pixels came from.
+`identityReference` and `provenance` are different records. The former explains what the subject should look like and is sourced from this world's atom cover; the latter explains where the delivered pixels came from.
 
 ## Intake checks
 

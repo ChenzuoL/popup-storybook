@@ -7,7 +7,7 @@ description: "Build or refine a browser-based 3D paper pop-up storybook with rea
 
 Create an actual readable Three.js book, not a slideshow inside a book-shaped frame. This skill is a production workflow, data contract, neutral page-turn state starter, and QA guide; it does not include a complete standalone Three.js renderer or licensed story assets.
 
-Resolve paths below relative to this SKILL.md. Read `references/engineering.md`, `references/runtime-contract.md`, `references/asset-pipeline.md`, `references/expansion-and-release.md` and `references/qa-gates.md` before implementation. Use `templates/book-v2.json` for new production books; use `templates/book.json` only for legacy schema v1 compatibility. Run the matching validator against actual book data. After changing the skill, run the complete self-test with `node scripts/test-skill.cjs`.
+Resolve paths below relative to this SKILL.md. Read `references/world-recon.md`, `references/engineering.md`, `references/runtime-contract.md`, `references/asset-pipeline.md`, `references/expansion-and-release.md` and `references/qa-gates.md` before implementation. Use `templates/book-v2.json` for new production books; use `templates/book.json` only for legacy schema v1 compatibility. Run the matching validator against actual book data. After changing the skill, run the complete self-test with `node scripts/test-skill.cjs`.
 
 ## Reuse Boundary
 
@@ -20,13 +20,13 @@ Use a simpler web page when no physical book or page-turn behavior is required. 
 - For Studio web creation, editing, or publishing, load `create-web-work` and follow its lifecycle. Do not create a new Work when updating an existing book.
 - Load `generate` before making images or audio; inspect current model declarations. Never assume an old model or voice parameter remains available.
 - Use the applicable asset-sheet skill for reference-guided deterministic sheets. Use background removal only when source alpha is unsuitable; inspect before and after.
-- Read world configuration and existing book files. Preserve original demos and unrelated content. Set visualStyle before creating materials requiring covers.
+- Read this world before designing anything in it: run Step 0 world reconnaissance. Preserve original demos and unrelated content. Set visualStyle before creating materials requiring covers.
 - Publish through the supported CLI. Do not hand-edit deployment metadata or embed credentials in browser code.
 - This local skill must be installed in another world before it is discoverable there; copy its entire folder, register it in that world's AGENTS.md, and resolve relative paths from that copied SKILL.md. Do not claim account-wide installation.
 
 ## Versioned contracts
 
-- **Schema v2 is the production contract for new books.** It requires `sceneContractVersion: 1`, page-art `surfacePolicy: ground-only`, explicit `maskFile` and `alphaBounds` for standees, `mechanism`, `reveal`, and `scenePolicy.requiredLayers` containing background, midground and foreground.
+- **Schema v2 is the production contract for new books.** It requires a `worldBinding` block from Step 0, `sceneContractVersion: 1`, page-art `surfacePolicy: ground-only`, explicit `maskFile` and `alphaBounds` for standees, `mechanism`, `reveal`, and `scenePolicy.requiredLayers` containing background, midground and foreground.
 - **Schema v1 remains readable for legacy Works** but is not the target for new production. Do not silently rewrite old ids or manifests; migrate deliberately.
 - New renderers expose the runtime surface in `references/runtime-contract.md`: deterministic `seekTurn`, ownership snapshots, page-surface audits and collision samples. Start from `templates/runtime/page-turn-state.mjs` or run `node scripts/scaffold.mjs <book-root>`; the starter owns state/ownership only, leaving Three.js geometry and materials to the Work.
 
@@ -61,6 +61,25 @@ Load `references/qa-gates.md` and treat its exit criteria as blocking checkpoint
 A failed gate stops downstream expansion until fixed or explicitly documented and accepted. Record unrun checks and limitations. Evidence becomes stale whenever the related layout, asset, audio or behavior changes.
 
 ## Production Workflow
+
+### 0. World Reconnaissance
+
+Before the storyboard. Find out what this world already holds, then bind the book to it. Read
+`references/world-recon.md`.
+
+- Inventory the world with `node scripts/world-survey.cjs --world=/path/to/world`: the atom types
+  actually present, every character/location/event with its description and whether it has a ready
+  cover, the works already made from them, and a `populated` / `sparse` / `empty` verdict.
+- Bind each chapter to existing characters, locations and events in `book.worldBinding`. One driving
+  event per chapter unless two are deliberately merged.
+- Take each character's atom **cover** as its identity reference, so it looks the same on every
+  spread. Resolve names against the live world with `--binding=<data/book.json>`.
+- **Empty world — the direction reverses.** The book creates the world's materials instead of
+  consuming them: set `state: "empty"`, list every invented character/location/event in `authored`,
+  and write them back as atoms so this world grows and the next work inherits them.
+- Reconcile after any chapter, cast or event change, and re-run the binding check.
+- Reading `visualStyle` is not obeying it. A book may keep its own printed medium while the world
+  renders differently; record that as the book's own style and leave the world config alone.
 
 ### 1. Establish Scope
 
@@ -127,6 +146,7 @@ Complete Gate 5 for every changed chapter and Gate 6 at publication scope. Run t
 - Check every pose and reveal state when used, including reverse and restored states. Regenerate affected directory thumbnails after final layout changes.
 - Finish/close test browser sessions; record shutdown errors as errors, not clean test completion. Store reproducible tests with the project, not only in temporary files.
 - For an adapter exposing the runtime contract, run `scripts/runtime-contract-check.cjs` across every adjacent pair in both directions. Validate any browser-produced page-depth report with `scripts/verify-depth-report.cjs`.
+- Re-run `scripts/world-survey.cjs --binding=<data/book.json>` so every bound name still resolves to an atom in this world. A chapter that invents canon without an `authored` entry is an error, not a gap.
 - Publish, verify returned ready state, and summarize implemented scope versus deliberate simplifications. Hand over the Work using interaction-components; use next-steps for creative follow-on choices.
 
 ## Reference Implementation

@@ -66,6 +66,44 @@ function validate(book, root, options = {}) {
   if (!text(book.title)) fail('Book title is required');
   if (book.sceneContractVersion !== 1) fail('sceneContractVersion must be 1');
 
+  const chapterIdList = Array.isArray(book.chapters) ? book.chapters.map(chapter => chapter?.id).filter(text) : [];
+  const binding = book.worldBinding;
+  const bindingStates = new Set(['populated', 'sparse', 'empty']);
+  if (!binding || typeof binding !== 'object') {
+    fail('worldBinding is required: run Step 0 world reconnaissance (references/world-recon.md)');
+  } else {
+    if (!text(binding.worldId)) fail('worldBinding.worldId is required');
+    if (!bindingStates.has(binding.state)) fail('worldBinding.state must be populated, sparse or empty');
+    if (!Array.isArray(binding.authored) || !binding.authored.every(text)) fail('worldBinding.authored must be an array of names');
+    const entries = Array.isArray(binding.chapters) ? binding.chapters : null;
+    if (!entries) fail('worldBinding.chapters must be an array');
+    else {
+      const seenBinding = new Set();
+      let bound = 0;
+      for (const [index, entry] of entries.entries()) {
+        if (!entry || !text(entry.chapterId)) { fail(`worldBinding.chapters[${index}] needs a chapterId`); continue; }
+        if (!chapterIdList.includes(entry.chapterId)) fail(`worldBinding entry ${entry.chapterId}: no such chapter in this book`);
+        if (seenBinding.has(entry.chapterId)) fail(`worldBinding: duplicate chapter ${entry.chapterId}`);
+        seenBinding.add(entry.chapterId);
+        let local = 0;
+        for (const field of ['characters', 'locations', 'events']) {
+          const value = entry[field];
+          if (value == null) continue;
+          if (!Array.isArray(value) || !value.every(text)) { fail(`worldBinding ${entry.chapterId}.${field} must be an array of names`); continue; }
+          local += value.length;
+        }
+        bound += local;
+        if (!local) warn(`${entry.chapterId}: binds no character, location or event — confirm that is deliberate`);
+      }
+      for (const id of chapterIdList) if (!seenBinding.has(id)) fail(`worldBinding: chapter ${id} has no entry`);
+      if (binding.state === 'empty') {
+        if (!binding.authored.length) fail('worldBinding.state "empty": authored[] must list the materials this book creates');
+      } else if (production && !bound) {
+        fail(`worldBinding: state "${binding.state}" but no chapter binds any material`);
+      }
+    }
+  }
+
   const chapters = records(book.chapters, 'chapters');
   const assets = records(book.assets, 'assets');
   const spreads = records(book.spreads, 'spreads');

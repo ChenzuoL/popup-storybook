@@ -12,11 +12,27 @@ QA is part of production, not a final ceremony. Run the smallest relevant gate i
 
 **Exit:** the pre-change contract and known failures are recorded.
 
+## Gate 0b: World Binding
+
+**When:** before storyboarding, and again whenever chapters, cast or events change.
+
+- Run `node scripts/world-survey.cjs --world=<world root>` and record the state verdict and the
+  materials actually present.
+- Resolve the book's binding: `node scripts/world-survey.cjs --world=<world root> --binding=<data/book.json>`.
+  Every bound name must be an atom of the right type; every chapter must have an entry.
+- Confirm identity references: each character used has a ready atom cover. A character with no cover
+  has no identity reference, which is exactly how the same character drifts between spreads.
+- Empty or sparse world: confirm the book's `authored[]` lists what it creates, and that created
+  materials are written back as atoms.
+
+**Exit:** the binding resolves, or every unresolved name is recorded as intentionally authored.
+
 ## Gate 1: Storyboard and Data
 
 **When:** after storyboarding, before generating a batch of assets; rerun whenever ids, text, page ownership or spread order changes.
 
 - Run the matching validator on the production manifest. New books use `scripts/validate-book-v2.cjs`; legacy schema v1 books use `scripts/validate-book.cjs`.
+- Confirm the `worldBinding` block from Gate 0b is present and each chapter names the materials it draws on.
 - Check chapter order, reveal timing, stable spread/passage ids, one clear focal subject per spread, page-turn reason and assigned foreground/midground/background.
 - For schema v2, confirm `surfacePolicy: ground-only`, alpha masks/bounds, explicit mechanism/reveal fields, and `scenePolicy.requiredLayers`.
 - Confirm every passage appears once in causal order and each chapter has one or more ordered spreads.
@@ -102,6 +118,7 @@ QA is part of production, not a final ceremony. Run the smallest relevant gate i
 
 | Change | Required gates |
 | --- | --- |
+| New chapter, cast or event | 0b, 1, 5, 6 before publish |
 | Story text, split or order | 1, 5, 6 before publish |
 | New generated/cropped asset | 2, 4; 3 if new visual form |
 | Position, scale, pose or reveal | 4, then 5 at chapter finish |

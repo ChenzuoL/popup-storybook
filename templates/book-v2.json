@@ -4,6 +4,19 @@
   "title": "Untitled Paper Storybook",
   "language": "zh",
   "adaptation": "Original adaptation note.",
+  "worldBinding": {
+    "worldId": "replace-with-the-current-world-id",
+    "state": "populated",
+    "chapters": [
+      {
+        "chapterId": "chapter-01",
+        "characters": ["replace-with-a-character-name"],
+        "locations": ["replace-with-a-location-name"],
+        "events": ["replace-with-an-event-name"]
+      }
+    ],
+    "authored": []
+  },
   "bookmarks": { "schemaVersion": 1, "storageKey": "paper-storybook/v1" },
   "chapters": [
     { "id": "chapter-01", "title": "The Discovery" }
