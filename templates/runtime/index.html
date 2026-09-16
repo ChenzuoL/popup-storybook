@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>纸艺立体书</title>
+  <link rel="icon" href="data:,">
+  <meta name="description" content="数据驱动的纸艺立体书运行时。">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <main class="stage">
+      <canvas id="view" aria-label="立体书画面"></canvas>
+
+      <div class="hud">
+        <span class="hud-chapter" id="hud-chapter"></span>
+        <strong class="hud-spread" id="hud-spread"></strong>
+      </div>
+
+      <div class="dock">
+        <button type="button" class="arrow" id="nav-prev" aria-label="上一跨页">‹</button>
+        <span class="dots" id="nav-dots"></span>
+        <span class="counter" id="hud-counter">1 / 5</span>
+        <button type="button" class="arrow" id="nav-next" aria-label="下一跨页">›</button>
+        <button type="button" class="plain" id="btn-index" aria-expanded="false">目录</button>
+        <button type="button" class="plain" id="btn-sound" aria-pressed="true">纸声 开</button>
+      </div>
+
+      <div class="gate" id="gate">
+        <p class="gate-kicker">东方Project · 同人立体绘卷</p>
+        <h1 class="gate-title" id="gate-title">红雾异变</h1>
+        <p class="gate-sub" data-book-sub>纸艺 · 立体书</p>
+        <button type="button" class="gate-open" id="gate-open">翻开第一章</button>
+        <p class="gate-note" id="gate-note">装订中…</p>
+
+      </div>
+
+      <section class="sheet" id="index" hidden>
+        <header class="sheet-head">
+          <strong>目 录</strong>
+          <button type="button" class="plain" id="index-close">合上</button>
+        </header>
+        <div class="sheet-body" id="index-list"></div>
+        <footer class="sheet-foot">
+          <button type="button" class="plain" id="btn-reset">回到第一跨页</button>
+        </footer>
+      </section>
+
+      <p class="banner" id="banner" hidden></p>
+    </main>
+
+    <aside class="reader">
+      <header class="reader-head">
+        <span class="reader-kicker">正 文</span>
+        <strong id="reader-spread"></strong>
+      </header>
+      <ol class="passages" id="passages"></ol>
+      <footer class="reader-foot">
+        <span>同人改编 · 画面由本项目生成</span>
+      </footer>
+    </aside>
+  </div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
