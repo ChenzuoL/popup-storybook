@@ -96,6 +96,8 @@ function checkBinding(book, report) {
   }
   const inventory = new Map(report.inventory.map(record => [`${record.type}:${record.name}`, record]));
   const known = new Set(report.inventory.map(record => record.name));
+  // character and location atoms both become standees, so both need a cover to serve as an identity reference
+  const visualTypes = new Set(['character', 'location']);
   const authored = new Set(Array.isArray(binding.authored) ? binding.authored : []);
   const chapterIds = new Set((Array.isArray(book.chapters) ? book.chapters : []).map(chapter => chapter.id));
   const bound = new Set();
@@ -108,8 +110,8 @@ function checkBinding(book, report) {
         bound.add(name);
         const record = inventory.get(`${singular}:${name}`);
         if (record) {
-          if (singular === 'character' && !record.hasCover) {
-            warnings.push(`${chapter.chapterId}: character ${name} has no ready cover, so no identity reference is available`);
+          if (visualTypes.has(singular) && !record.hasCover) {
+            warnings.push(`${chapter.chapterId}: ${singular} ${name} has no ready cover, so no identity reference is available`);
           }
           continue;
         }

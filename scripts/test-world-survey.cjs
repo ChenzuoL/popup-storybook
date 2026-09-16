@@ -126,7 +126,7 @@ assert.ok(noBinding.errors.some(e => e.includes('no worldBinding block')), 'a bo
 const templateCheck = checkBinding(template, live);
 assert.ok(templateCheck.errors.some(e => e.includes('not an atom')), 'template placeholders must not resolve as real atoms');
 
-// a character without a cover cannot supply an identity reference: warn, do not fail
+// a character or a location without a cover cannot supply an identity reference: warn, do not fail
 const bareDir = fs.mkdtempSync(path.join(os.tmpdir(), 'popup-bare-'));
 writeWorld(bareDir, { characters: ['Alice', 'Bob', 'Cara'], locations: ['Hall', 'Garden'], events: ['The Incident'], withCovers: false });
 const bare = survey(bareDir);
@@ -135,7 +135,9 @@ const noCover = checkBinding(bookWith({
   chapters: [{ chapterId: 'chapter-01', characters: ['Alice'], locations: ['Hall'], events: ['The Incident'] }], authored: []
 }), bare);
 assert.deepEqual(noCover.errors, [], 'a missing cover is a warning, not an error');
-assert.ok(noCover.warnings.some(w => w.includes('no ready cover')), 'a missing cover must warn');
+assert.ok(noCover.warnings.some(w => w.includes('character Alice') && w.includes('no ready cover')), 'a coverless character must warn');
+assert.ok(noCover.warnings.some(w => w.includes('location Hall') && w.includes('no ready cover')), 'a coverless location must warn too, because landmarks drift like characters');
+assert.ok(!noCover.warnings.some(w => w.includes('event') && w.includes('no ready cover')), 'an event is a story source, not a standee, so it needs no cover');
 
 // an unreadable world is reported, not thrown
 const badDir = fs.mkdtempSync(path.join(os.tmpdir(), 'popup-bad-'));

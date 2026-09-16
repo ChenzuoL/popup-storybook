@@ -59,18 +59,33 @@ node scripts/world-survey.cjs --world=/path/to/world --binding=/path/to/data/boo
 
 ## Identity references
 
-An atom's own cover is the identity reference. This is the mechanism that keeps a character looking
-the same across spreads, and it is why reconnaissance is not optional:
+Every atom a book renders as a standee carries a cover, and that cover is the identity reference.
+This is what keeps a subject looking the same on every spread, and it is why reconnaissance is not
+optional.
 
-- Prefer the generator's native atom reference syntax when it exists (`@CharacterName`), which
-  resolves to that atom's cover.
+| Material | Becomes in the book | Identity reference |
+| --- | --- | --- |
+| `character` atom | character standee | its own cover |
+| `location` atom | landmark or environment standee | its own cover |
+| `event` atom | the chapter's driving source | usually none needed — it is a story source, not an asset |
+| other visual atoms (`item`, `faction` emblem, `race`) | a prop or emblem standee when the book uses one | its own cover |
+
+Locations are not decoration. A landmark standee — a shrine hall, a mansion, a gate — is as
+recognisable as a character and drifts just as badly if it is drawn from prose instead of from the
+world's own picture of it. Treat a location cover with the same discipline as a character cover.
+
+- Prefer the generator's native atom reference syntax when it exists (`@CharacterName`,
+  `@LocationName`), which resolves to that atom's cover.
 - Otherwise read `coverArtifactPath`, follow it to `url`, and pass the cover as a reference image
   with the medium/identity split stated in the prompt: *one reference supplies the printing medium
-  only; this one supplies the character's identity and costume.*
-- Record the atom id on the asset as `identityReference`, separately from pixel provenance.
+  only; this one supplies the subject's identity and form.*
+- A spread that needs both a character and a landmark passes both covers, as separate references with
+  separate jobs.
+- Record the atom id on each asset as `identityReference`, separately from pixel provenance.
 
-Do not invent an identity description when an atom already carries the character. Do not overwrite,
-re-crop or re-generate a world cover as part of the book.
+Do not invent an identity description when an atom already carries the subject — a landmark drawn
+from a prose guess will not match the landmark another work already drew. Do not overwrite, re-crop
+or re-generate a world cover as part of the book.
 
 ## Three world states
 

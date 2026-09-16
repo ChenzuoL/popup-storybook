@@ -18,8 +18,9 @@ Schema v2 standees carry:
 - `alphaBounds`: normalized visible bounds `[x, y, width, height]`;
 - `role`: background environment, midground character, foreground prop, and so on;
 - `identityReference`: the reference that preserves subject identity. Source it from this world's own
-  atom cover — see `world-recon.md`. Never invent an identity description when the world already
-  carries the character.
+  atom cover — a character cover for a character standee, a location cover for a landmark standee.
+  See `world-recon.md`. Never invent an identity description when the world already carries the
+  subject.
 - `provenance`: `{sourceType, sourceRef, notes}`;
 - optional `sourceImageSize`, `cropRect`, `finalImageSize`, `maxWorldWidth`, `maxWorldHeight`.
 

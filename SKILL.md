@@ -74,8 +74,10 @@ Before the storyboard. Find out what this world already holds, then bind the boo
   cover, the works already made from them, and a `populated` / `sparse` / `empty` verdict.
 - Bind each chapter to existing characters, locations and events in `book.worldBinding`. One driving
   event per chapter unless two are deliberately merged.
-- Take each character's atom **cover** as its identity reference, so it looks the same on every
-  spread. Resolve names against the live world with `--binding=<data/book.json>`.
+- Take each character's and each location's atom **cover** as its identity reference — a character
+  cover becomes a character standee, a location cover becomes a landmark standee — so a subject looks
+  the same on every spread and matches how this world already draws it. Resolve names against the
+  live world with `--binding=<data/book.json>`.
 - **Empty world — the direction reverses.** The book creates the world's materials instead of
   consuming them: set `state: "empty"`, list every invented character/location/event in `authored`,
   and write them back as atoms so this world grows and the next work inherits them.
