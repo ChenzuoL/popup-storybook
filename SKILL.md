@@ -50,13 +50,15 @@ User preferences override these defaults. Existing application contracts take pr
 
 Load `references/qa-gates.md` and treat its exit criteria as blocking checkpoints. Do not postpone all QA until delivery.
 
-1. Capture an existing-book baseline before edits.
-2. Run the storyboard/data gate before asset batches.
-3. Run asset intake QA immediately after every generation, crop, sheet split or background-removal batch.
-4. Build and approve one representative spread before multiplying a new visual or mechanical pattern.
-5. Run state, ownership and adjacent-turn QA after every changed spread; batch only truly mechanical equivalents.
-6. Run chapter QA before moving to the next chapter when working chapter by chapter.
-7. Run full regression after shared renderer/navigation/audio changes and before final publication.
+1. Run world reconnaissance and bind the book to this world before storyboarding (Step 0, Gate 0b).
+2. Capture an existing-book baseline before edits.
+3. Run the storyboard/data gate before asset batches.
+4. Run asset intake QA immediately after every generation, crop, sheet split or background-removal batch.
+5. Build and approve one representative spread before multiplying a new visual or mechanical pattern.
+6. Run state, ownership and adjacent-turn QA after every changed spread; batch only truly mechanical equivalents.
+7. Run chapter QA before moving to the next chapter when working chapter by chapter.
+8. Run page-depth QA whenever page blocks, surfaces, spine, camera or render order change.
+9. Run full regression after shared renderer/navigation/audio changes and before final publication.
 
 A failed gate stops downstream expansion until fixed or explicitly documented and accepted. Record unrun checks and limitations. Evidence becomes stale whenever the related layout, asset, audio or behavior changes.
 
