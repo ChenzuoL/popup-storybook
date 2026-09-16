@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 function validate(book, root, production = false) {
+  if (book?.schemaVersion === 2) return require('./validate-book-v2.cjs').validate(book, root, { production }).errors;
   const errors = [];
   const fail = message => errors.push(message);
   const text = v => typeof v === 'string' && v.trim().length > 0;

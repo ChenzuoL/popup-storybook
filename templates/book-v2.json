@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 2,
+  "sceneContractVersion": 1,
+  "title": "Untitled Paper Storybook",
+  "language": "zh",
+  "adaptation": "Original adaptation note.",
+  "bookmarks": { "schemaVersion": 1, "storageKey": "paper-storybook/v1" },
+  "chapters": [
+    { "id": "chapter-01", "title": "The Discovery" }
+  ],
+  "spreadOrder": ["chapter-01-spread-01"],
+  "assets": [
+    {
+      "id": "page-ground",
+      "type": "page-art",
+      "role": "ground-only",
+      "file": "templates/placeholders/page-ground.txt",
+      "surfacePolicy": "ground-only",
+      "provenance": { "sourceType": "generated", "sourceRef": "replace-with-generation-record", "notes": "Ground texture only." }
+    },
+    {
+      "id": "backdrop-standee",
+      "type": "standee",
+      "role": "background environment",
+      "file": "templates/placeholders/subject-standee.txt",
+      "maskFile": "templates/placeholders/subject-standee-mask.txt",
+      "alphaBounds": [0, 0, 1, 1],
+      "identityReference": "replace-with-an-environment-reference",
+      "provenance": { "sourceType": "generated", "sourceRef": "replace-with-generation-record", "notes": "Transparent environmental standee." }
+    },
+    {
+      "id": "subject-standee",
+      "type": "standee",
+      "role": "midground character",
+      "file": "templates/placeholders/subject-standee.txt",
+      "maskFile": "templates/placeholders/subject-standee-mask.txt",
+      "alphaBounds": [0, 0, 1, 1],
+      "identityReference": "replace-with-a-real-reference",
+      "provenance": { "sourceType": "generated", "sourceRef": "replace-with-generation-record", "notes": "Transparent subject standee." }
+    },
+    {
+      "id": "foreground-standee",
+      "type": "standee",
+      "role": "foreground prop",
+      "file": "templates/placeholders/subject-standee.txt",
+      "maskFile": "templates/placeholders/subject-standee-mask.txt",
+      "alphaBounds": [0, 0, 1, 1],
+      "identityReference": "replace-with-a-prop-reference",
+      "provenance": { "sourceType": "generated", "sourceRef": "replace-with-generation-record", "notes": "Transparent foreground prop." }
+    }
+  ],
+  "spreads": [
+    {
+      "id": "chapter-01-spread-01",
+      "chapterId": "chapter-01",
+      "title": "A First Glimpse",
+      "focalSubject": "subject-standee",
+      "scaleHierarchy": ["backdrop-standee", "subject-standee", "foreground-standee", "page-ground"],
+      "pageArt": { "left": "page-ground", "right": "page-ground" },
+      "scenePolicy": {
+        "requiredLayers": ["background", "midground", "foreground"],
+        "sparseIntent": false
+      },
+      "scene": [
+        {
+          "id": "backdrop-left",
+          "assetId": "backdrop-standee",
+          "side": "left",
+          "layer": "background",
+          "anchor": [0.58, 0.3],
+          "maxWidth": 0.7,
+          "maxHeight": 0.65,
+          "mechanism": "hinge",
+          "reveal": { "start": 0.45, "end": 0.95 }
+        },
+        {
+          "id": "subject-left",
+          "assetId": "subject-standee",
+          "side": "left",
+          "layer": "midground",
+          "anchor": [0.55, 0.48],
+          "maxWidth": 0.25,
+          "maxHeight": 0.55,
+          "mechanism": "hinge",
+          "reveal": { "start": 0.45, "end": 0.95 }
+        },
+        {
+          "id": "foreground-right",
+          "assetId": "foreground-standee",
+          "side": "right",
+          "layer": "foreground",
+          "anchor": [0.7, 0.82],
+          "maxWidth": 0.2,
+          "maxHeight": 0.22,
+          "mechanism": "hinge",
+          "reveal": { "start": 0.45, "end": 0.95 }
+        }
+      ],
+      "passages": [
+        {
+          "id": "passage-001",
+          "speaker": "Narrator",
+          "text": "Replace this sample with the adapted passage.",
+          "audio": null
+        }
+      ]
+    }
+  ]
+}

@@ -16,8 +16,9 @@ QA is part of production, not a final ceremony. Run the smallest relevant gate i
 
 **When:** after storyboarding, before generating a batch of assets; rerun whenever ids, text, page ownership or spread order changes.
 
-- Run `scripts/validate-book.cjs` on the production manifest when the project uses the provided contract.
+- Run the matching validator on the production manifest. New books use `scripts/validate-book-v2.cjs`; legacy schema v1 books use `scripts/validate-book.cjs`.
 - Check chapter order, reveal timing, stable spread/passage ids, one clear focal subject per spread, page-turn reason and assigned foreground/midground/background.
+- For schema v2, confirm `surfacePolicy: ground-only`, alpha masks/bounds, explicit mechanism/reveal fields, and `scenePolicy.requiredLayers`.
 - Confirm every passage appears once in causal order and each chapter has one or more ordered spreads.
 - Confirm rights/adaptation wording and no printed text requirement.
 
@@ -53,6 +54,7 @@ QA is part of production, not a final ceremony. Run the smallest relevant gate i
 - Exercise every dialogue/pose/reveal state forward, backward and by direct restore.
 - Check actor swaps fold old paper flat first and update geometry, shadow alpha, backing/edge, support height and crease position.
 - Sample both adjacent turn pairs, including unchanged neighbors.
+- Freeze turns at 0.99, 0.999 and 1.0. Compare attachment transforms and fold/support state; the endpoint handoff must be continuous within the declared tolerance and must not reset unrelated spreads.
 - Inspect screenshot and collision output. If composition changes after screenshot approval, invalidate and refresh that evidence.
 
 **Exit:** no new runtime/shader errors, clipping, wrong ownership, stale state, incoherent overlap or reported noncoplanar crossing.
@@ -69,13 +71,27 @@ QA is part of production, not a final ceremony. Run the smallest relevant gate i
 
 **Exit:** chapter status is recorded as passed, passed with named limitations, or blocked. Do not call the whole book complete.
 
+## Gate 5a: Page Depth and Occlusion
+
+**When:** after page-block, page-surface, spine, material, camera or render-order changes; rerun before publication when any shared renderer code changes.
+
+- Render front, low-angle, normal oblique and side cameras with the full scene.
+- Render the same camera set with page blocks, spine and standees hidden so only printed page surfaces remain.
+- Sample a grid of interior page pixels and compare color/alpha against the paper-only baseline. Report camera, side, normalized point, threshold and hit class.
+- Reject broad slope-based `polygonOffset` on printed pages. Fixed units may be used only with a recorded reason and evidence.
+- Check exact turn endpoints for duplicate coplanar static/moving surfaces.
+
+**Exit:** zero unexplained page-interior occlusions, no spine/page-block bleed, and evidence stored with the build.
+
 ## Gate 6: Full Book Regression
 
 **When:** after shared renderer/navigation/audio changes and before every final publish. For a narrow isolated asset replacement, rerun affected chapters plus a smoke traversal; state the reduced scope.
 
 - Validate data and every local file.
 - Traverse every spread forward/back, start/end boundaries, rapid click lock, directory and all migrations.
-- Sample all adjacent turns in both directions. Exercise all dynamic states.
+- Sample all adjacent turns in both directions. Exercise all dynamic states through the runtime contract's deterministic `seekTurn` hook when available.
+- Verify backward ownership: the current right-page image remains until the moving leaf lands; outgoing/incoming attachments travel with the leaf and static neighbors do not.
+- Run endpoint continuity and page-depth/occlusion checks for shared renderer changes.
 - Play representative audio including first, multipassage, cross-page, error and final clips; check decodability/duration of all files.
 - Test desktop, mobile and short landscape; inspect front/back; check nonblank pixels and runtime/network errors.
 - Regenerate directory/work thumbnails from final layouts.
@@ -89,8 +105,9 @@ QA is part of production, not a final ceremony. Run the smallest relevant gate i
 | Story text, split or order | 1, 5, 6 before publish |
 | New generated/cropped asset | 2, 4; 3 if new visual form |
 | Position, scale, pose or reveal | 4, then 5 at chapter finish |
-| Page turn, book structure or carrier transform | 3, 4 for all affected neighbors, 6 |
-| Paper material/back/edge/support | 3 front/back, 4, 6 |
+| Page turn, book structure or carrier transform | 3, 4 for all affected neighbors, 5a, 6 |
+| Paper material/back/edge/support | 3 front/back, 4, 5a, 6 |
+| Camera, depth, render order or page blocks | 3, 5a, 6 |
 | Audio text/file/player | 1, 5 audio, 6 audio |
 | UI, responsive layout, directory/bookmark | 5 desktop/mobile, 6 navigation/persistence |
 | Thumbnail only | inspect target thumbnail and confirm it represents final scene |

@@ -5,9 +5,9 @@ description: "Build or refine a browser-based 3D paper pop-up storybook with rea
 
 # Pop-Up Storybook
 
-Create an actual readable Three.js book, not a slideshow inside a book-shaped frame. This skill is a production workflow, data contract, and QA guide; it does not include a standalone rendering engine or licensed story assets.
+Create an actual readable Three.js book, not a slideshow inside a book-shaped frame. This skill is a production workflow, data contract, neutral page-turn state starter, and QA guide; it does not include a complete standalone Three.js renderer or licensed story assets.
 
-Resolve paths below relative to this SKILL.md. Read `references/engineering.md` and `references/qa-gates.md` before implementation. Use `templates/book.json` as a neutral starting contract, not as finished content. Run `scripts/validate-book.cjs` against the actual book data. Run `node scripts/test-validator.cjs` after modifying this skill's validator or template.
+Resolve paths below relative to this SKILL.md. Read `references/engineering.md`, `references/runtime-contract.md`, `references/asset-pipeline.md`, `references/expansion-and-release.md` and `references/qa-gates.md` before implementation. Use `templates/book-v2.json` for new production books; use `templates/book.json` only for legacy schema v1 compatibility. Run the matching validator against actual book data. After changing the skill, run the complete self-test with `node scripts/test-skill.cjs`.
 
 ## Reuse Boundary
 
@@ -24,6 +24,12 @@ Use a simpler web page when no physical book or page-turn behavior is required. 
 - Publish through the supported CLI. Do not hand-edit deployment metadata or embed credentials in browser code.
 - This local skill must be installed in another world before it is discoverable there; copy its entire folder, register it in that world's AGENTS.md, and resolve relative paths from that copied SKILL.md. Do not claim account-wide installation.
 
+## Versioned contracts
+
+- **Schema v2 is the production contract for new books.** It requires `sceneContractVersion: 1`, page-art `surfacePolicy: ground-only`, explicit `maskFile` and `alphaBounds` for standees, `mechanism`, `reveal`, and `scenePolicy.requiredLayers` containing background, midground and foreground.
+- **Schema v1 remains readable for legacy Works** but is not the target for new production. Do not silently rewrite old ids or manifests; migrate deliberately.
+- New renderers expose the runtime surface in `references/runtime-contract.md`: deterministic `seekTurn`, ownership snapshots, page-surface audits and collision samples. Start from `templates/runtime/page-turn-state.mjs` or run `node scripts/scaffold.mjs <book-root>`; the starter owns state/ownership only, leaving Three.js geometry and materials to the Work.
+
 ## Defaults
 
 User preferences override these defaults. Existing application contracts take priority over a new architecture.
@@ -34,8 +40,10 @@ User preferences override these defaults. Existing application contracts take pr
 - One spread contains one key scene and one or several speaker-attributed passages. Never force a page turn after every sentence.
 - For narration-led editions, keep prose out of printed page artwork and put chapter labels, narration and dialogue in the reading UI. For educational, facsimile or user-requested text-on-page editions, printed text is allowed only when legibility, gutter safety, localization and accessibility are explicitly designed and tested.
 - Printed page art supplies ground, paths, rugs, soil, and low detail. Independent transparent standees supply characters, vegetation and important props.
+- A production spread normally has all three depth layers: a background curtain or distant silhouette, one or more midground subjects/architecture, and a low foreground prop. A deliberately sparse spread must declare `scenePolicy.sparseIntent` and a reason.
 - Opening and closing paper mechanisms are the default motion. Add independent character/object animation only when the brief calls for it and it does not undermine the paper construction; test it as a separate state system.
 - Preserve plain paper backs, fine contour-edge shading, rear supports, folds, and restrained contact shadows. Do not add exposed front feet.
+- Treat page blocks and static paper surfaces as separate depth surfaces. Never use a broad slope-based polygon offset to push printed pages behind page blocks; verify oblique views with the page-depth gate.
 - Reading UI never covers the book canvas. Inspection mode may collapse prose but must retain playback and a visible way back.
 
 ## QA Cadence
@@ -66,7 +74,7 @@ Prepare a table: chapter, stable spread id, title, key event, passage ids, flat 
 
 Keep causal order and key dialogue. Do not bring later characters or reveals forward for decoration. A revealing interior picture must not appear before the reveal. A symbolic scene and a literal scene need visibly different staging.
 
-Choose spread count from story beats, not a fixed pages-per-chapter quota. Distinguish 6 spreads from 6 individual pages. For a large book, approve one representative chapter before broad rollout; report exactly which chapters are complete.
+Choose spread count from story beats, not a fixed pages-per-chapter quota. Distinguish 6 spreads from 6 individual pages. For a large book, approve one representative chapter before broad rollout; report exactly which chapters are complete. Follow `references/expansion-and-release.md` when adding chapters or publishing an existing Work.
 
 ### 3. Lock Scale and Composition
 
@@ -78,19 +86,19 @@ Design rear silhouettes, midground actors and low foreground. Avoid a row of ide
 
 ### 4. Produce and Audit Assets
 
-Run QA Gate 2 after each asset batch; do not wait until all chapters are populated.
+Run QA Gate 2 after each asset batch; do not wait until all chapters are populated. Run `scripts/audit-assets.cjs` for every schema v2 production manifest.
 
 Reuse approved identity references. Generate missing characters/poses and environmental elements in a unified medium. Generate low-contrast, unlettered page-surface textures separately from upright assets.
 
 Inspect alpha over light and dark backgrounds; complete hair, hands, tails, scarves and roots must survive cropping. Preserve good original alpha. Background-removal success does not guarantee preserved dimensions or limbs. Split sheets using observed cell bounds, not guessed equal cells after a service has cropped them.
 
-Record source URLs, crop rectangles, alpha bounds, final sizes, intended physical scale, and generation provenance. Do not include secrets or claim generated voices are real children.
+Record source URLs, crop rectangles, alpha bounds, final sizes, intended physical scale, and generation provenance. Keep identity references separate from pixel provenance. Do not include secrets or claim generated voices are real children.
 
 ### 5. Implement the Book
 
 Pass QA Gate 3 on one representative spread, then Gate 4 after each changed spread/state. If page-turn or shared renderer code changes, schedule Gate 6.
 
-Use the structural guidance in `references/engineering.md`. Keep chapter identity, spread identity, ordered navigation, passage identity, scene ownership, and audio identity separate. Inserted spreads must not rename old audio or break bookmarks.
+Use the structural guidance in `references/engineering.md` and the runtime contract in `references/runtime-contract.md`. Keep chapter identity, spread identity, ordered navigation, passage identity, scene ownership, and audio identity separate. Inserted spreads must not rename old audio or break bookmarks.
 
 Create every spread as its own scene. A turn is a continuous leaf transformation, not an invisible jump between duplicate books. Page texture and standees must follow the same page frame. Use fixed page-block heights unless requested otherwise.
 
@@ -113,9 +121,12 @@ Complete Gate 5 for every changed chapter and Gate 6 at publication scope. Run t
 - Click actual UI arrows forward/back through every changed spread and chapter boundary; test rapid clicks, directory jumps, bookends, and old bookmarks.
 - Play real audio: multiple passages on one spread, end-to-turn, pause/resume, manual cancellation, errors, replay and final stop.
 - Inspect front, back, oblique view and intermediate turn screenshots. Test at least desktop and 390x844 mobile. Canvas-pixel variance must be nonzero, assets loaded, UI separate, text readable.
-- Sample both turn directions across every affected adjacent pair, including unchanged neighbors. Filter out detached/hidden legacy meshes. Check noncoplanar paper/support edges against page surfaces; report sample count, failures and limitations. Never call finite sampling a proof of no intersection.
+- Run the page-depth gate: compare full-book and paper-only renders at low, normal and side camera angles. Confirm printed page pixels are not hidden by page blocks or spine; record the sample grid and threshold.
+- Sample both turn directions across every affected adjacent pair, including unchanged neighbors. Filter out detached/hidden legacy meshes. Check noncoplanar paper/support edges against page surfaces and the moving leaf; report pair, direction, progress, asset/support id, hit surface, sample count, failures and limitations. Never call finite sampling a proof of no intersection.
+- Freeze at endpoint and near-endpoint progress values. Assert no attachment position/orientation jump and no whole-book scene reset.
 - Check every pose and reveal state when used, including reverse and restored states. Regenerate affected directory thumbnails after final layout changes.
 - Finish/close test browser sessions; record shutdown errors as errors, not clean test completion. Store reproducible tests with the project, not only in temporary files.
+- For an adapter exposing the runtime contract, run `scripts/runtime-contract-check.cjs` across every adjacent pair in both directions. Validate any browser-produced page-depth report with `scripts/verify-depth-report.cjs`.
 - Publish, verify returned ready state, and summarize implemented scope versus deliberate simplifications. Hand over the Work using interaction-components; use next-steps for creative follow-on choices.
 
 ## Reference Implementation

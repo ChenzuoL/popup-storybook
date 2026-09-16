@@ -10,7 +10,7 @@ Map printed textures to page aspect correctly. Crop/contain with intent, never s
 
 ## Navigation Contract
 
-A neutral model is provided in `../templates/book.json`. Prefer string ids such as `chapter-02-spread-03`, with an explicit `spreadOrder` array. Use `spreadOrder.indexOf(id)` for neighbors, not `id + 1`, chapter number comparisons or sorting ids. A book may contain a cover/frontispiece without treating it as chapter zero.
+A schema v2 neutral model is provided in `../templates/book-v2.json`; `../templates/book.json` remains the legacy schema v1 model. Prefer string ids such as `chapter-02-spread-03`, with an explicit `spreadOrder` array. Use `spreadOrder.indexOf(id)` for neighbors, not `id + 1`, chapter number comparisons or sorting ids. A book may contain a cover/frontispiece without treating it as chapter zero.
 
 Minimum renderer adapter:
 
@@ -18,6 +18,9 @@ Minimum renderer adapter:
 - `turn(direction)` validates neighbor and locks input until complete.
 - `goTo(spreadId, passageId)` restores a deterministic scene and cancels stale playback.
 - `advanceNarration()` advances passages; only their final ended event requests the next spread.
+- `seekTurn(progress)` freezes an active turn at normalized progress for deterministic QA; it must not persist a bookmark or fire completion/audio callbacks.
+- `pageSurfaceAudit()` reports low/high ownership, static-page visibility, moving-leaf visibility, render order and depth settings.
+- `attachmentSnapshot()` reports every visible attachment's world transform, fold amount, support visibility and owner spread.
 
 Keep manual commands and automatic advancement separate. A UI arrow must not sometimes mean next sentence and sometimes mean next page. Keep whole-spread prose available even when the audio cursor advances.
 
@@ -36,9 +39,11 @@ For migration, map old chapter/line tuples to new spread/passage ids. Reject inv
 
 Before reapplying a carrier transform restore the attachment's local transform; otherwise drift accumulates. Avoid coincident page surfaces near endpoints through explicit visibility/depth handling, not arbitrary large offsets. Keep alpha-cutout shadow maps synchronized when swapping textures.
 
+At the forward/backward endpoints, the carrier frame and the settled page frame must be numerically identical within a declared tolerance. Do not reset the whole scene at completion; release only the two neighboring spread groups. A page surface must sit above its page block in world space. Broad slope-based polygon offsets are forbidden on printed page surfaces because oblique cameras can push artwork behind the block and expose blank paper or the spine.
+
 ## Paper Appearance
 
-Use front illustration color with alpha-tested silhouette. On back-facing fragments replace color with neutral paper but retain the same alpha contour. Tinting the original illustration is not a plain paper back. Avoid a rectangular backing plane visible outside the asset contour.
+Use front illustration color with alpha-tested silhouette. On back-facing fragments replace color with neutral paper but retain the same alpha contour. Tinting the original illustration is not a plain paper back. Avoid a rectangular backing plane visible outside the asset contour. Treat page-surface art as a ground-only material: it may contain ground, path, rug, water or low-detail haze, but not the main architecture or characters when those are intended as standees.
 
 A subtle alpha-neighbor edge shader can suggest cut edges; label it as shading, not actual thickness. If physical thickness is required, derive/extrude the alpha contour with a tested tracing/triangulation library, simplify it, and verify holes and disconnected islands. Do not extrude the enclosing rectangle.
 
@@ -62,6 +67,16 @@ Before carrying the skill into another world, confirm the destination has:
 
 Do not assume the originating world's paths, numeric ids, Three.js version, Chinese copy, viewport height, audio model/reference, publishing id, palette, page dimensions or chapter count. Feature-detect browser APIs such as dialog, audio and WebGL; provide accessible fallbacks where the target audience requires them. Do not copy placeholders as production assets.
 
+## Scene Composition Contract
+
+For a normal production spread, declare and render all three depth layers:
+
+- **background**: distant silhouette, mountain, skyline, forest wall, cloud bank or architectural backdrop;
+- **midground**: main building, landmark, character or readable scene subject;
+- **foreground**: low prop, plant, stone, table, grass or other grounding detail.
+
+The page surface is the ground plane, not a substitute for a background layer. Reuse is allowed, but a whole chapter must not become a row of the same empty ground with one character swapped in. If a spread intentionally breaks the three-layer rule, set `scenePolicy.sparseIntent: true` and record why.
+
 ## Test Matrix
 
 | Surface | Minimum evidence |
@@ -72,6 +87,8 @@ Do not assume the originating world's paths, numeric ids, Three.js version, Chin
 | Assets | Front/back/light/dark checks; no clipped extremities, rectangular alpha residue, mirrored back art or stretched poses |
 | Scene composition | Every changed spread and pose, legible focal subject, scale hierarchy, page contact, depth separation |
 | Motion | Both directions, endpoints and multiple intermediate progress values, no flashes or accumulating drift |
+| Endpoint handoff | Attachment world transforms at 0.99, 0.999, 1.0; no jump, stale carrier or whole-book reset |
+| Page depth | Low/normal/side cameras; page-only pixel comparison with blocks/props hidden; no block or spine occlusion |
 | Audio | Real playback and ended events; same-spread sequence, auto turn, manual cancellation, error/retry, hidden-tab pause |
 | Persistence | Version migration, corrupt storage, settings restore, silent start |
 | Layout | Desktop, mobile, short landscape; prose overflow bounded, control access, canvas not covered |
@@ -79,6 +96,8 @@ Do not assume the originating world's paths, numeric ids, Three.js version, Chin
 | Publication | Returned ready state, correct unchanged Work, final thumbnails match current scenes |
 
 Apply this matrix through the timed gates in `qa-gates.md`; it is not a final-only checklist.
+
+For visual depth QA, sample page interior points rather than only the canvas standard deviation. A nonblank render can still have its printed page hidden by a page block.
 
 For collision sampling, intersect visible mesh triangle edges against the visible page surfaces. Require sign change across the hit plane, reject coplanar contacts with an explicit tolerance, and exclude detached meshes not descending from the scene root. Log spread pair, direction, normalized time, asset id, support id and hit surface. A sampled pass says nothing definitive about transparency outlines or unsampled times.
 
