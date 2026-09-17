@@ -1,17 +1,22 @@
 # Asset production pipeline
 
-Every character, prop or environmental standee goes through the same recorded pipeline:
+For a schema v3 page-first book, every character, prop or environmental standee goes through the
+board-linked pipeline:
 
 ```text
-source/reference -> generate or import -> background removal -> crop -> alpha bounds
--> transparent padding -> mask -> compression -> light/dark inspection -> manifest/provenance
+approved composition board -> boardItems/boardRect -> crop OR regenerate
+-> background removal -> alpha bounds -> transparent padding -> mask -> compression
+-> light/dark inspection -> 2D reconstruction -> manifest/provenance
 ```
+
+The board region is locked before pixels are produced. A crop failure may choose the regenerate branch,
+but it may not choose a new location.
 
 The page surface is a separate `page-art` asset with `surfacePolicy: ground-only`. Do not flatten a foreground character, landmark or readable building into it to make a spread look fuller.
 
 ## Manifest record
 
-Schema v2 standees carry:
+Schema v3 standees carry the v2 records plus a board-linked scene item. The asset record still carries:
 
 - `file`: final transparent local asset;
 - `maskFile`: audited grayscale mask or alpha diagnostic;
@@ -23,6 +28,9 @@ Schema v2 standees carry:
   subject.
 - `provenance`: `{sourceType, sourceRef, notes}`;
 - optional `sourceImageSize`, `cropRect`, `finalImageSize`, `maxWorldWidth`, `maxWorldHeight`.
+
+The scene record carries `boardItemId`, `placementSource: "board"`, `coordinateSpace` and derived
+`anchor/maxWidth/maxHeight`. See `board-first.md`.
 
 `identityReference` and `provenance` are different records. The former explains what the subject should look like and is sourced from this world's atom cover; the latter explains where the delivered pixels came from.
 
@@ -38,7 +46,7 @@ Create a contact sheet with at least:
 - mask/alpha bounds;
 - in-scene scale preview.
 
-A successful background-removal request is not an accepted asset. The production record is only complete after visual inspection and a manifest audit.
+A successful background-removal request is not an accepted asset. The production record is only complete after visual inspection, a manifest audit and a passing 2D reconstruction. If a board element is occluded by another element, do not cut through it blindly; regenerate that element in isolation using the board and its world atom cover.
 
 ## Reproducibility
 
@@ -48,6 +56,7 @@ Run:
 
 ```bash
 node scripts/audit-assets.cjs data/book.json --production --root=.
+node scripts/reconstruct-board.mjs --book=data/book.json --root=. --spread=<spread-id> --out=docs/qa/<spread-id>.svg
 ```
 
 This checks paths, masks, bounds, provenance and scale metadata. It does not replace human alpha inspection or alpha-contour collision proof.

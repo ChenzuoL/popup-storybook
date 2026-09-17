@@ -1,5 +1,6 @@
 // store.js — versioned, local-only bookmark/settings store. Corrupt or older shapes are migrated or dropped.
-const KEY = (globalThis.__BOOK_STORAGE_KEY__) || 'paper-storybook/v1';
+let KEY = 'paper-storybook/v1';
+export function configureStore(key) { if (typeof key !== 'string' || !key.trim()) throw new Error('bookmarks.storageKey required'); KEY = key; }
 const SCHEMA = 1;
 
 export function loadBookmark() {

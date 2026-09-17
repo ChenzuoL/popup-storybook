@@ -1,0 +1,34 @@
+'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+const { validate } = require('./validate-book-v3.cjs');
+const { validate: validateCompat } = require('./validate-book.cjs');
+const dir = path.resolve(__dirname, '..');
+const template = JSON.parse(fs.readFileSync(path.join(dir, 'templates/book-v3.json'), 'utf8'));
+const clone = () => structuredClone(template);
+const errors = (mutate, production = true) => {
+  const book = clone();
+  mutate(book);
+  return validate(book, dir, { production }).errors;
+};
+assert.deepEqual(validate(template, dir, { production: false }).errors, []);
+assert(validate(template, dir, { production: true }).errors.some(e=>e.includes('approved')));
+assert(validateCompat(template, dir, true).some(e=>e.includes('approved')), 'dispatcher must reject unreviewed template');
+assert(errors(book => delete book.spreads[0].compositionBoard, false).some(error => error.includes('compositionBoard')));
+assert(errors(book => book.spreads[0].compositionBoard.status = 'draft').some(error => error.includes('status must be approved')));
+assert(errors(book => book.spreads[0].compositionBoard.coordinateSpace = 'page').some(error => error.includes('full-spread')));
+assert(errors(book => book.spreads[0].boardItems[0].boardRect = [0, 0, 2000, 20]).some(error => error.includes('stay inside')));
+assert(errors(book => book.spreads[0].boardItems[0].cutMode = 'guess').some(error => error.includes('invalid cutMode')));
+assert(errors(book => book.spreads[0].boardItems[1].materialRef = '').some(error => error.includes('materialRef')));
+assert(errors(book => book.spreads[0].scene[0].boardItemId = 'missing').some(error => error.includes('unknown boardItemId')));
+assert(errors(book => book.spreads[0].scene[0].placementSource = 'manual').some(error => error.includes('placementSource')));
+assert(errors(book => book.spreads[0].scene[0].coordinateSpace = 'board').some(error => error.includes('coordinateSpace')));
+assert(errors(book => book.spreads[0].reconstruction.status = 'pending').some(error => error.includes('reconstruction.status')));
+assert(errors(book => book.spreads[0].reconstruction.file = 'missing.svg').some(error => error.includes('reconstruction.file')));
+assert(errors(book => book.spreads[0].boardItems[0].cutMode = 'manual').some(error => error.includes('manual cutMode')));
+assert(errors(book => book.spreads[0].boardItems[0].reason = 'manual review', false).length === 0);
+assert(errors(book => {
+  book.spreads[0].boardItems.push({ ...book.spreads[0].boardItems[0], id: 'duplicate-board-item' });
+}, true).some(error => error.includes('boardItem')));
+console.log('PASS v3 board-first template draft/production and 13 negative contract cases');

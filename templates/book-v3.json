@@ -1,0 +1,305 @@
+{
+  "schemaVersion": 3,
+  "sceneContractVersion": 1,
+  "compositionContractVersion": 1,
+  "title": "Untitled Page-First Paper Storybook",
+  "language": "zh",
+  "adaptation": "Original adaptation note.",
+  "worldBinding": {
+    "worldId": "replace-with-the-current-world-id",
+    "state": "populated",
+    "chapters": [
+      {
+        "chapterId": "chapter-01",
+        "characters": [
+          "replace-with-a-character-name"
+        ],
+        "locations": [
+          "replace-with-a-location-name"
+        ],
+        "events": [
+          "replace-with-an-event-name"
+        ]
+      }
+    ],
+    "authored": []
+  },
+  "pageGeometry": {
+    "pageWidth": 0.888,
+    "pageHeight": 1,
+    "coordinateUnits": "book"
+  },
+  "boardToBook": {
+    "profile": "paper-book-v1",
+    "canonicalCamera": "front-oblique",
+    "gutter": 0.06,
+    "depthBands": {
+      "background": 0.28,
+      "midground": 0.55,
+      "foreground": 0.82
+    }
+  },
+  "bookmarks": {
+    "schemaVersion": 1,
+    "storageKey": "paper-storybook/v1"
+  },
+  "chapters": [
+    {
+      "id": "chapter-01",
+      "title": "The Discovery"
+    }
+  ],
+  "spreadOrder": [
+    "chapter-01-spread-01"
+  ],
+  "assets": [
+    {
+      "id": "cover-art",
+      "type": "cover",
+      "role": "cover",
+      "file": "templates/placeholders/subject-standee.txt",
+      "provenance": {
+        "sourceType": "generated",
+        "sourceRef": "replace-with-cover-record",
+        "notes": "Replace placeholder."
+      }
+    },
+    {
+      "id": "page-ground",
+      "type": "page-art",
+      "role": "ground-only",
+      "file": "templates/placeholders/page-ground.txt",
+      "surfacePolicy": "ground-only",
+      "provenance": {
+        "sourceType": "generated",
+        "sourceRef": "replace-with-ground-record",
+        "notes": "Ground texture only."
+      }
+    },
+    {
+      "id": "backdrop-standee",
+      "type": "standee",
+      "role": "background environment",
+      "file": "templates/placeholders/subject-standee.txt",
+      "maskFile": "templates/placeholders/subject-standee-mask.txt",
+      "alphaBounds": [
+        0,
+        0,
+        1,
+        1
+      ],
+      "identityReference": "replace-with-location-atom-cover",
+      "provenance": {
+        "sourceType": "generated",
+        "sourceRef": "replace-with-generation-record",
+        "notes": "Replace placeholder."
+      }
+    },
+    {
+      "id": "subject-standee",
+      "type": "standee",
+      "role": "midground character",
+      "file": "templates/placeholders/subject-standee.txt",
+      "maskFile": "templates/placeholders/subject-standee-mask.txt",
+      "alphaBounds": [
+        0,
+        0,
+        1,
+        1
+      ],
+      "identityReference": "replace-with-character-atom-cover",
+      "provenance": {
+        "sourceType": "generated",
+        "sourceRef": "replace-with-generation-record",
+        "notes": "Replace placeholder."
+      }
+    },
+    {
+      "id": "foreground-standee",
+      "type": "standee",
+      "role": "foreground prop",
+      "file": "templates/placeholders/subject-standee.txt",
+      "maskFile": "templates/placeholders/subject-standee-mask.txt",
+      "alphaBounds": [
+        0,
+        0,
+        1,
+        1
+      ],
+      "identityReference": "replace-with-prop-reference",
+      "provenance": {
+        "sourceType": "generated",
+        "sourceRef": "replace-with-generation-record",
+        "notes": "Replace placeholder."
+      }
+    }
+  ],
+  "spreads": [
+    {
+      "id": "chapter-01-spread-01",
+      "chapterId": "chapter-01",
+      "title": "A First Glimpse",
+      "focalSubject": "subject-standee",
+      "scaleHierarchy": [
+        "backdrop-standee",
+        "subject-standee",
+        "foreground-standee"
+      ],
+      "pageArt": {
+        "left": "page-ground",
+        "right": "page-ground"
+      },
+      "scenePolicy": {
+        "requiredLayers": [
+          "background",
+          "midground",
+          "foreground"
+        ],
+        "sparseIntent": false
+      },
+      "compositionBoard": {
+        "file": "templates/placeholders/composition-board.svg",
+        "sourceWork": "replace-with-composition-board-work",
+        "canvas": [
+          1536,
+          768
+        ],
+        "coordinateSpace": "full-spread",
+        "status": "draft"
+      },
+      "boardItems": [
+        {
+          "id": "board-backdrop",
+          "assetId": "backdrop-standee",
+          "materialRef": "location:replace-with-location",
+          "boardRect": [
+            0,
+            20,
+            1536,
+            170
+          ],
+          "role": "background",
+          "layer": "background",
+          "pageSide": "spread",
+          "depthBand": "background",
+          "cutMode": "crop",
+          "required": true
+        },
+        {
+          "id": "board-subject",
+          "assetId": "subject-standee",
+          "materialRef": "character:replace-with-character",
+          "boardRect": [
+            820,
+            150,
+            250,
+            500
+          ],
+          "role": "character",
+          "layer": "midground",
+          "pageSide": "right",
+          "depthBand": "midground",
+          "cutMode": "regenerate",
+          "required": true
+        },
+        {
+          "id": "board-foreground",
+          "assetId": "foreground-standee",
+          "materialRef": "item:replace-with-prop",
+          "boardRect": [
+            1120,
+            560,
+            220,
+            150
+          ],
+          "role": "foreground",
+          "layer": "foreground",
+          "pageSide": "right",
+          "depthBand": "foreground",
+          "cutMode": "crop",
+          "required": true
+        }
+      ],
+      "reconstruction": {
+        "status": "pending",
+        "sourceBoard": "templates/placeholders/composition-board.svg",
+        "file": "templates/placeholders/reconstruction.svg",
+        "report": "templates/placeholders/reconstruction-report.json"
+      },
+      "scene": [
+        {
+          "id": "subject-boarded",
+          "assetId": "subject-standee",
+          "boardItemId": "board-subject",
+          "placementSource": "board",
+          "coordinateSpace": "page",
+          "side": "right",
+          "layer": "midground",
+          "anchor": [
+            0.232,
+            0.55
+          ],
+          "maxWidth": 0.326,
+          "maxHeight": 0.651,
+          "mechanism": "hinge",
+          "reveal": {
+            "start": 0.45,
+            "end": 0.95
+          }
+        },
+        {
+          "id": "backdrop-boarded",
+          "assetId": "backdrop-standee",
+          "boardItemId": "board-backdrop",
+          "placementSource": "board",
+          "coordinateSpace": "spread",
+          "crossGutter": true,
+          "side": "left",
+          "layer": "background",
+          "anchor": [
+            0.5,
+            0.28
+          ],
+          "maxWidth": 2,
+          "maxHeight": 0.28,
+          "mechanism": "hinge",
+          "reveal": {
+            "start": 0.45,
+            "end": 0.95
+          }
+        },
+        {
+          "id": "foreground-boarded",
+          "assetId": "foreground-standee",
+          "boardItemId": "board-foreground",
+          "placementSource": "board",
+          "coordinateSpace": "page",
+          "side": "right",
+          "layer": "foreground",
+          "anchor": [
+            0.6,
+            0.82
+          ],
+          "maxWidth": 0.286,
+          "maxHeight": 0.195,
+          "mechanism": "hinge",
+          "reveal": {
+            "start": 0.45,
+            "end": 0.95
+          }
+        }
+      ],
+      "passages": [
+        {
+          "id": "passage-001",
+          "speaker": "Narrator",
+          "text": "Replace this sample with the adapted passage.",
+          "audio": null
+        }
+      ]
+    }
+  ],
+  "covers": {
+    "front": "cover-art"
+  }
+}

@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import { deriveBoardPlacement } from '../templates/runtime/board-to-book.mjs';
+const board = { canvas: [1000, 500] };
+const left = deriveBoardPlacement({ id: 'left', boardRect: [100, 100, 200, 200], pageSide: 'left', layer: 'midground', depthBand: 'midground' }, board);
+assert.deepEqual(left.anchor, [0.6, 0.55]);
+assert.equal(left.coordinateSpace, 'page');
+assert.equal(left.side, 'left');
+const right = deriveBoardPlacement({ id: 'right', boardRect: [650, 100, 200, 200], pageSide: 'right', layer: 'foreground', depthBand: 'foreground' }, board);
+assert.deepEqual(right.anchor, [0.5, 0.82]);
+assert.equal(right.coordinateSpace, 'page');
+const wide = deriveBoardPlacement({ id: 'wide', boardRect: [0, 10, 1000, 80], pageSide: 'spread', layer: 'background', depthBand: 'background' }, board);
+assert.deepEqual(wide.anchor, [0.5, 0.28]);
+assert.equal(wide.crossGutter, true);
+assert.equal(wide.coordinateSpace, 'spread');
+assert.throws(() => deriveBoardPlacement({ id: 'bad', boardRect: [900, 0, 200, 50], pageSide: 'right', layer: 'foreground', depthBand: 'foreground' }, board), /stay inside/);
+assert.throws(() => deriveBoardPlacement({ id: 'bad', boardRect: [0, 0, 10, 10], pageSide: 'right', layer: 'foreground', depthBand: 'unknown' }, board), /unknown depthBand/);
+console.log('PASS board-to-book mapping preserves board x/size and applies declared depth bands');

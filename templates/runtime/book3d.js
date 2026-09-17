@@ -95,6 +95,8 @@ export class PopupBook {
     this._textures = new Map();
     this._standees = new Map();   // spreadId -> array of standee records
     this._disposed = false;
+    this.pageW = Number(book.pageGeometry?.pageWidth) || PAGE_W;
+    this.pageH = Number(book.pageGeometry?.pageHeight) || PAGE_H;
   }
 
   // ---------------------------------------------------------------- loading
@@ -151,7 +153,7 @@ export class PopupBook {
       const artTex = this._tex(this.book.covers.front);
       if (artTex && artTex.image && artTex.image.width) {
         // crop the cover plate to the page aspect instead of stretching it
-        const frac = Math.min(1, (artTex.image.width / artTex.image.height) / (PAGE_W / PAGE_H));
+        const frac = Math.min(1, (artTex.image.width / artTex.image.height) / (this.pageW / this.pageH));
         if (frac < 0.999) {
           const uv = this.coverArt.geometry.attributes.uv;
           const u0 = 0.5 - frac / 2;
@@ -187,15 +189,15 @@ export class PopupBook {
     this.leftStack.scale.x = 0.001;
     this.root.add(this.leftStack);
     for (const side of [-1, 1]) {
-      const cx = side * PAGE_W / 2;
-      const block = new THREE.Mesh(new THREE.BoxGeometry(PAGE_W, BLOCK_H, PAGE_H), this.pageEdgeMat);
+      const cx = side * this.pageW / 2;
+      const block = new THREE.Mesh(new THREE.BoxGeometry(this.pageW, BLOCK_H, this.pageH), this.pageEdgeMat);
       block.position.set(cx, PAGE_Y - BLOCK_H / 2, 0);
       (side < 0 ? this.leftStack : this.root).add(block);
-      const board = new THREE.Mesh(new THREE.BoxGeometry(PAGE_W + 0.018, BOARD_H, PAGE_H + 0.018), this.boardMat);
+      const board = new THREE.Mesh(new THREE.BoxGeometry(this.pageW + 0.018, BOARD_H, this.pageH + 0.018), this.boardMat);
       board.position.set(cx, PAGE_Y - BLOCK_H - BOARD_H / 2, 0);
       (side < 0 ? this.leftStack : this.root).add(board);
     }
-    const spine = new THREE.Mesh(new THREE.BoxGeometry(0.052, BLOCK_H + BOARD_H, PAGE_H + 0.016), this.boardMat);
+    const spine = new THREE.Mesh(new THREE.BoxGeometry(0.052, BLOCK_H + BOARD_H, this.pageH + 0.016), this.boardMat);
     spine.position.set(0, PAGE_Y - (BLOCK_H + BOARD_H) / 2, 0);
     this.root.add(spine);
   }
@@ -203,11 +205,11 @@ export class PopupBook {
   /** A settled page surface. u runs over the page's half of the plate: [outer 0 -> gutter 0.5] on the left,
    *  [gutter 0.5 -> outer 1] on the right. */
   _pageSurface(side) {
-    const g = new THREE.PlaneGeometry(PAGE_W, PAGE_H);
+    const g = new THREE.PlaneGeometry(this.pageW, this.pageH);
     g.rotateX(-Math.PI / 2);
     const uv = g.attributes.uv;
     for (let i = 0; i < uv.count; i++) uv.setX(i, side < 0 ? 0.5 * uv.getX(i) : 0.5 + 0.5 * uv.getX(i));
-    g.translate(side * PAGE_W / 2, PAGE_Y + 0.001, 0);
+    g.translate(side * this.pageW / 2, PAGE_Y + 0.001, 0);
     // The printed sheet is physically above the block. Slope-based depth bias would push it
     // behind the block at oblique camera angles, exposing a blank top and the cloth spine.
     const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({
@@ -225,15 +227,15 @@ export class PopupBook {
 
   _buildLeaf() {
     const seg = 56;
-    const front = new THREE.PlaneGeometry(PAGE_W, PAGE_H, seg, 1);
+    const front = new THREE.PlaneGeometry(this.pageW, this.pageH, seg, 1);
     front.rotateX(-Math.PI / 2);
-    front.translate(PAGE_W / 2, 0, 0);          // x in [0, PAGE_W], z in [-H/2, H/2]
+    front.translate(this.pageW / 2, 0, 0);          // x in [0, this.pageW], z in [-H/2, H/2]
     const back = front.clone();
     const fuv = front.attributes.uv, buv = back.attributes.uv;
     this._rest = new Float32Array(front.attributes.position.count * 3);
     const pos = front.attributes.position;
     for (let i = 0; i < pos.count; i++) {
-      const uLeaf = pos.getX(i) / PAGE_W;
+      const uLeaf = pos.getX(i) / this.pageW;
       this._rest[i * 3] = pos.getX(i);
       this._rest[i * 3 + 1] = pos.getZ(i);
       fuv.setX(i, 0.5 + 0.5 * uLeaf);           // right page of the outgoing spread
@@ -256,9 +258,9 @@ export class PopupBook {
   }
 
   _buildCover() {
-    const geo = new THREE.PlaneGeometry(PAGE_W, PAGE_H);
+    const geo = new THREE.PlaneGeometry(this.pageW, this.pageH);
     geo.rotateX(-Math.PI / 2);
-    geo.translate(PAGE_W / 2, 0, 0);
+    geo.translate(this.pageW / 2, 0, 0);
     const inside = geo.clone();
     const iuv = inside.attributes.uv;
     for (let i = 0; i < iuv.count; i++) iuv.setX(i, 0.5 * (1 - iuv.getX(i)));  // where it lands on the left
@@ -290,7 +292,7 @@ export class PopupBook {
         const visW = bounds[2], visH = bounds[3];
         if (visW <= 0 || visH <= 0) continue;
         const aspect = (img.width * visW) / (img.height * visH);
-        const maxW = item.maxWidth * PAGE_W, maxH = item.maxHeight * PAGE_H;
+        const maxW = item.maxWidth * this.pageW, maxH = item.maxHeight * this.pageH;
         const h = Math.min(maxH, maxW / aspect);
         const w = h * aspect;
         const planeH = h / visH;
@@ -324,8 +326,12 @@ export class PopupBook {
         figure.add(rig, ...support);
 
         const side = item.side === 'left' ? -1 : 1;
+        const spreadSpace = item.coordinateSpace === 'spread' || item.crossGutter === true;
         const xNorm = item.anchor[0], zNorm = item.anchor[1];
-        const home = new THREE.Vector3(side * xNorm * PAGE_W, PAGE_Y + 0.003, -PAGE_H / 2 + zNorm * PAGE_H);
+        // Normal items use page-local x (0=gutter, 1=outer edge). A spread-space item keeps
+        // the composition board's full-spread x and may cross the gutter when explicitly allowed.
+        const homeX = spreadSpace ? (xNorm - 0.5) * 2 * this.pageW : side * xNorm * this.pageW;
+        const home = new THREE.Vector3(homeX, PAGE_Y + 0.003, -this.pageH / 2 + zNorm * this.pageH);
         figure.position.copy(home);
         rig.rotation.x = -Math.PI / 2;
         group.add(figure);
@@ -346,11 +352,13 @@ export class PopupBook {
         group.add(crease);
 
         const layerDelay = item.layer === 'background' ? 0 : item.layer === 'foreground' ? 0.16 : 0.08;
-        const s = xNorm * PAGE_W;
-        const vHalfW = Math.min((planeW * visW) / 2, item.side === 'right' ? PAGE_W - s : s);
+        const s = spreadSpace ? Math.max(0, Math.min(this.pageW, homeX)) : xNorm * this.pageW;
+        const vHalfW = spreadSpace
+          ? (planeW * visW) / 2
+          : Math.min((planeW * visW) / 2, item.side === 'right' ? this.pageW - s : s);
         items.push({
           figure, rig, shadow, crease, mesh, support, home, side: item.side, xNorm, zNorm, h, w, layerDelay,
-          assetId: item.assetId, vHalfW, vH: planeH * visH
+          assetId: item.assetId, sceneId: item.id, spreadSpace, leafS: s, vHalfW, vH: planeH * visH
         });
         this._updateSupport(items[items.length - 1]);
       }
@@ -452,13 +460,16 @@ export class PopupBook {
 
   /** Places a pop-up that is glued to the turning leaf: its base and its surface frame follow the curled paper. */
   _rideLeaf(it, p, face) {
-    const s = it.xNorm * PAGE_W;
+    const s = it.leafS ?? it.xNorm * this.pageW;
     const phi = Math.PI * p;
     const kappa = CURL_MAX * Math.sin(Math.PI * Math.min(Math.max(p, 0), 1)) ** 2;
     // A rigid cut-out rests on the CHORD of the curved paper, not on its tangent: its two ends touch
     // the sheet and the middle clears it, which is both what paper does and what keeps edges honest.
-    const half = Math.max(1e-6, Math.min(it.vHalfW, s, PAGE_W - s));
-    const sA = Math.max(0, s - half), sB = Math.min(PAGE_W, s + half);
+    const half = it.spreadSpace
+      ? Math.max(1e-6, it.vHalfW)
+      : Math.max(1e-6, Math.min(it.vHalfW, s, this.pageW - s));
+    const sA = it.spreadSpace ? s - half : Math.max(0, s - half);
+    const sB = it.spreadSpace ? s + half : Math.min(this.pageW, s + half);
     curlPoint(sA, phi, kappa, this._v);
     const ax = this._v[0], ay = this._v[1];
     curlPoint(sB, phi, kappa, this._v);
@@ -731,7 +742,60 @@ export class PopupBook {
     for (const [id, rec] of this._standees) {
       if (!rec.group.visible) continue;
       for (const it of rec.items) {
-        out.push({ spread: id, asset: it.assetId, position: it.figure.position.toArray(), fold: it.rig.rotation.x, visible: it.figure.visible, riding: !!it.riding });
+        out.push({ id: it.sceneId || `${id}:${it.assetId}`, spread: id, asset: it.assetId, ownerSpread: id, position: it.figure.position.toArray(), fold: it.rig.rotation.x, visible: it.figure.visible, riding: !!it.riding });
+      }
+    }
+    return out;
+  }
+
+  /** QA hook: stable ownership/depth snapshot for the active adjacent turn. */
+  pageSurfaceAudit() {
+    const a = this.anim;
+    if (!a || a.kind !== 'turn') {
+      const current = this.spreads[this.state.index];
+      return {
+        lowId: current?.id || null, highId: current?.id || null, progress: 0,
+        static: { left: { visible: this.leftSurface.visible, assetId: current?.pageArt?.left || null }, right: { visible: this.rightSurface.visible, assetId: current?.pageArt?.right || null } },
+        leaf: { visible: this.leafGroup.visible, frontAssetId: null, backAssetId: null },
+        coplanarVisible: false, occlusions: [],
+        depth: { leftRenderOrder: this.leftSurface.renderOrder, rightRenderOrder: this.rightSurface.renderOrder, leafRenderOrder: this.leafFront.renderOrder }
+      };
+    }
+    const from = this.spreads.find(spread => spread.id === a.fromId);
+    const to = this.spreads.find(spread => spread.id === a.toId);
+    const forward = a.dir > 0;
+    const low = forward ? from : to;
+    const high = forward ? to : from;
+    const progress = forward ? this.state.p : 1 - this.state.p;
+    const coplanarVisible = progress <= PAGE_COVER_EPS && this.rightSurface.visible || progress >= 1 - PAGE_COVER_EPS && this.leftSurface.visible;
+    return {
+      lowId: low?.id || null, highId: high?.id || null, progress,
+      static: { left: { visible: this.leftSurface.visible, assetId: low?.pageArt?.left || null }, right: { visible: this.rightSurface.visible, assetId: high?.pageArt?.right || null } },
+      leaf: { visible: this.leafGroup.visible, frontAssetId: low?.pageArt?.right || null, backAssetId: high?.pageArt?.left || null },
+      coplanarVisible, occlusions: [],
+      depth: { leftRenderOrder: this.leftSurface.renderOrder, rightRenderOrder: this.rightSurface.renderOrder, leafRenderOrder: this.leafFront.renderOrder, leftPolygonOffset: !!this.leftSurface.material.polygonOffset, rightPolygonOffset: !!this.rightSurface.material.polygonOffset }
+    };
+  }
+
+  /** QA hook: world-space attachment snapshot with stable scene ids and page ownership. */
+  attachmentSnapshot() {
+    this.root.updateMatrixWorld(true);
+    const out = [];
+    for (const [spreadId, record] of this._standees) {
+      if (!record.group.visible) continue;
+      for (const item of record.items) {
+        if (!item.figure.visible && !item.riding) continue;
+        const position = new THREE.Vector3();
+        const quaternion = new THREE.Quaternion();
+        item.figure.getWorldPosition(position);
+        item.figure.getWorldQuaternion(quaternion);
+        out.push({
+          id: item.sceneId || `${spreadId}:${item.assetId}`,
+          assetId: item.assetId, ownerSpread: spreadId,
+          position: position.toArray(), quaternion: quaternion.toArray(),
+          fold: item.rig.rotation.x, supportVisible: item.support.some(panel => panel.visible),
+          owner: item.riding ? 'leaf' : 'static'
+        });
       }
     }
     return out;
@@ -806,7 +870,7 @@ export class PopupBook {
   _frameCamera() {
     const w = this.canvas.clientWidth || 1, h = this.canvas.clientHeight || 1;
     const focus = this.drag.focus === undefined ? 1 : this.drag.focus;
-    const cx = PAGE_W * 0.5 * (1 - focus);            // a closed book is framed on its own half only
+    const cx = this.pageW * 0.5 * (1 - focus);            // a closed book is framed on its own half only
     const half = 0.46 + 0.52 * focus;
     const vFov = THREE.MathUtils.degToRad(this.camera.fov);
     const rH = half / (Math.tan(vFov / 2) * this.camera.aspect);

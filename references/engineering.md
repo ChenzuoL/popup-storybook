@@ -6,11 +6,34 @@ Use distinct objects for back board, hinged front board, cloth spine/joints, lef
 
 Keep page block heights stable unless the brief requires physically changing stacks. Hard cover motion and leaf motion are separate. Let the book open into a legible, close, front-biased perspective; constrain camera framing to the available canvas below/above UI rather than the total window.
 
+## Board-first source model
+
+For schema v3, the approved `compositionBoard` is the single visual layout source for a spread.
+`boardItems[].boardRect` records where each deliberate element lives in full-spread board pixels;
+`scene[].boardItemId` links the 3D attachment back to that record. Asset regeneration can change
+pixels, alpha or resolution, but never its board rectangle, relative scale, side, layer or intended
+occlusion.
+
+Keep three coordinate systems separate:
+
+- **board space**: full-spread image pixels, used for composition and reconstruction;
+- **page space**: one physical page, used for page-local anchors and gutter safety;
+- **book depth**: the renderer's physical z/depth band, chosen by `boardToBook`, not copied from
+  image y.
+
+Horizontal page surfaces, steps and paths belong to `pageArt`. Vertical risers, railings, trees,
+characters and buildings are independent standees. A complete board may show them visually touching;
+that does not authorize flattening them into `pageArt` or moving them after decomposition.
+
+The Little Prince case study's `stand()` / `rearSupport()` primitives and `scenes-rest.js` recipes are
+useful runtime evidence. They are not a source of portable coordinates: convert a case-study recipe
+to the v3 board contract before reusing it.
+
 Map printed textures to page aspect correctly. Crop/contain with intent, never stretch faces or distort circular features. Split imagery at the gutter; keep important details away from the seam. Never mirror lettering or duplicate upright characters into the floor texture.
 
 ## Navigation Contract
 
-A schema v2 neutral model is provided in `../templates/book-v2.json`; `../templates/book.json` remains the legacy schema v1 model. Prefer string ids such as `chapter-02-spread-03`, with an explicit `spreadOrder` array. Use `spreadOrder.indexOf(id)` for neighbors, not `id + 1`, chapter number comparisons or sorting ids. A book may contain a cover/frontispiece without treating it as chapter zero.
+A schema v3 board-first neutral model is provided in `../templates/book-v3.json`; `../templates/book-v2.json` remains the existing asset-first v2 model and `../templates/book.json` remains the legacy schema v1 model. Prefer string ids such as `chapter-02-spread-03`, with an explicit `spreadOrder` array. Use `spreadOrder.indexOf(id)` for neighbors, not `id + 1`, chapter number comparisons or sorting ids. A book may contain a cover/frontispiece without treating it as chapter zero.
 
 Minimum renderer adapter:
 
@@ -82,6 +105,11 @@ The page surface is the ground plane, not a substitute for a background layer. R
 | Surface | Minimum evidence |
 | --- | --- |
 | Data | Unique ids, complete order, chapter links, valid scene asset links, attributed text, valid local files |
+| World binding | Bound characters/locations/events resolve to this world; character and landmark covers are available |
+| Composition board | One approved full-spread board per changed spread, correct source Work/file/canvas and no stale replacement |
+| Decomposition | Every deliberate board element has a boardRect, material reference, role, layer, side, depth band and crop mode |
+| 2D reconstruction | Board-linked assets recompose in the original regions; no missing/duplicate/mislabelled element |
+| Board calibration | Board x/size survive page mapping; y is not copied as raw depth; page/gutter and intentional cross-gutter items are explicit |
 | Controls | Actual clicks forward/back, ignored repeated clicks in turn, start/end boundaries, canvas does not turn |
 | Ownership | Settled state shows current spread only; transition shows only its neighboring pair |
 | Assets | Front/back/light/dark checks; no clipped extremities, rectangular alpha residue, mirrored back art or stretched poses |
@@ -107,6 +135,10 @@ For collision sampling, intersect visible mesh triangle edges against the visibl
 - Applying a standing-width cap to seated characters makes them tiny.
 - Cropping a sheet after an external service reframed it cuts bodies at old grid boundaries.
 - Broad artwork near a gutter intersects the turning leaf even when the settled page looks fine.
+- A complete composition board is mistaken for `pageArt`, flattening the scene into a poster instead of independent standees.
+- An asset is regenerated after a crop failure and quietly receives a new position, so the 3D page no longer matches the approved board.
+- Board image y is copied directly to book z; all assets then collapse toward the page edge or reverse the intended depth.
+- A board region is labelled from an approximate center point and claims a neighboring connected component; use explicit region frames and report conflicts.
 - Old hidden gameplay/accordion/canvas-click handlers continue to change narrative state.
 - New spread ids point audio to nonexistent files when paths are built from chapter indices.
 - Growing a numeric chapters array with extra spread ids changes its length and silently changes the last chapter.
@@ -114,3 +146,4 @@ For collision sampling, intersect visible mesh triangle edges against the visibl
 - An orphan mesh outside the rendered scene creates false collision results.
 - Directory thumbnails retain deleted corner markers or old scene layouts.
 - Test output says PASS before a timed-out browser shutdown; retain the distinction in verification notes.
+- A thumbnail or published iframe fails while the local renderer passes; publication QA must use the live Work and fail closed.

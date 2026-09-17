@@ -1,6 +1,6 @@
 # Pop-Up Storybook runtime contract v2
 
-A production renderer may choose its own Three.js architecture, but it must expose a small deterministic QA surface in `window.__neta` or an adapter with equivalent methods.
+A production renderer may choose its own Three.js architecture, but it must expose a small deterministic QA surface in `window.__neta` or an adapter with equivalent methods. A renderer may implement the case-study names (`window.bookQA.read`, `fold`, `seek`, `collisions`, `mechanismBounds`) internally, but the production adapter must normalize them to the names below.
 
 ## Required state
 
@@ -33,6 +33,7 @@ At an endpoint, never leave static and moving surfaces coplanar and visible toge
 Every scene item exposes or internally retains:
 
 - stable asset id and scene id;
+- `boardItemId` and the approved source board region when using schema v3;
 - page side and layer;
 - normalized anchor and visible alpha bounds;
 - mechanism (`hinge`, `rise`, `accordion`, or `static`);
@@ -80,7 +81,7 @@ attachmentSnapshot() {
 }
 ```
 
-The checker runs every adjacent pair in both directions, freezes the turn at seven progress values, checks backward page-image ownership, enforces a configurable same-spread fold synchrony tolerance, rejects sampled collision hits and compares the `.999` attachment snapshot with the settled snapshot. Invoke it with a renderer adapter and production book manifest:
+The checker runs every adjacent pair in both directions, freezes the turn at seven progress values, checks backward page-image ownership, enforces a configurable same-spread fold synchrony tolerance, rejects sampled collision hits and compares the `.999` attachment snapshot with the settled snapshot. For schema v3, run the 2D board reconstruction before invoking this runtime checker; runtime QA cannot prove that a wrong asset was placed against the wrong board region. Invoke it with a renderer adapter and production book manifest:
 
 ```bash
 node scripts/runtime-contract-check.cjs \

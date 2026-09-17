@@ -5,9 +5,9 @@ description: "Build or refine a browser-based 3D paper pop-up storybook with rea
 
 # Pop-Up Storybook
 
-Create an actual readable Three.js book, not a slideshow inside a book-shaped frame. This skill is a production workflow, data contract, neutral page-turn state starter, and QA guide; it does not include a complete standalone Three.js renderer or licensed story assets.
+Create an actual readable Three.js book, not a slideshow inside a book-shaped frame. This skill includes a production workflow, board-first contract, Three.js runtime source and QA tools. The scaffold contains draft placeholders; replace and verify assets before delivering a book. It contains no licensed story assets.
 
-Resolve paths below relative to this SKILL.md. Read `references/world-recon.md`, `references/engineering.md`, `references/runtime-contract.md`, `references/asset-pipeline.md`, `references/expansion-and-release.md` and `references/qa-gates.md` before implementation. Use `templates/book-v2.json` for new production books; use `templates/book.json` only for legacy schema v1 compatibility. Run the matching validator against actual book data. After changing the skill, run the complete self-test with `node scripts/test-skill.cjs`.
+Resolve paths below relative to this SKILL.md. Read `references/world-recon.md`, `references/board-first.md`, `references/engineering.md`, `references/runtime-contract.md`, `references/asset-pipeline.md`, `references/expansion-and-release.md` and `references/qa-gates.md` before implementation. Use `templates/book-v3.json` for new page-first production books; use `templates/book-v2.json` for existing v2 books and `templates/book.json` only for legacy schema v1 compatibility. Run the matching validator and board reconstruction against actual book data. After changing the skill, run the complete self-test with `node scripts/test-skill.cjs`.
 
 ## Reuse Boundary
 
@@ -26,9 +26,10 @@ Use a simpler web page when no physical book or page-turn behavior is required. 
 
 ## Versioned contracts
 
-- **Schema v2 is the production contract for new books.** It requires a `worldBinding` block from Step 0, `sceneContractVersion: 1`, page-art `surfacePolicy: ground-only`, explicit `maskFile` and `alphaBounds` for standees, `mechanism`, `reveal`, and `scenePolicy.requiredLayers` containing background, midground and foreground.
-- **Schema v1 remains readable for legacy Works** but is not the target for new production. Do not silently rewrite old ids or manifests; migrate deliberately.
-- New renderers expose the runtime surface in `references/runtime-contract.md`: deterministic `seekTurn`, ownership snapshots, page-surface audits and collision samples. Start from `templates/runtime/page-turn-state.mjs` or run `node scripts/scaffold.mjs <book-root>`; the starter owns state/ownership only, leaving Three.js geometry and materials to the Work.
+- **Schema v3 is the production contract for new page-first books.** It requires the v2 world binding and scene contract plus one approved `compositionBoard`, explicit `boardItems`, board-linked scene placements, a passing `reconstruction` proof and a `boardToBook` depth profile.
+- **Schema v2 remains readable for existing Works** and is the legacy asset-first contract. Do not silently rewrite old ids or manifests; migrate deliberately.
+- **Schema v1 remains readable for legacy Works** but is not the target for new production.
+- New renderers expose the runtime surface in `references/runtime-contract.md`: deterministic `seekTurn`, ownership snapshots, page-surface audits and collision samples. Start from `templates/runtime/page-turn-state.mjs`, `templates/runtime/board-to-book.mjs` or run `node scripts/scaffold.mjs <book-root>`; the starter owns state/placement derivation, leaving Three.js materials and story content to the Work.
 
 ## Defaults
 
@@ -41,6 +42,7 @@ User preferences override these defaults. Existing application contracts take pr
 - For narration-led editions, keep prose out of printed page artwork and put chapter labels, narration and dialogue in the reading UI. For educational, facsimile or user-requested text-on-page editions, printed text is allowed only when legibility, gutter safety, localization and accessibility are explicitly designed and tested.
 - Printed page art supplies ground, paths, rugs, soil, and low detail. Independent transparent standees supply characters, vegetation and important props.
 - A production spread normally has all three depth layers: a background curtain or distant silhouette, one or more midground subjects/architecture, and a low foreground prop. A deliberately sparse spread must declare `scenePolicy.sparseIntent` and a reason.
+- New spreads are page-first: approve one composition board, decompose it into board regions, produce/crop assets without changing those regions, pass 2D reconstruction, then map into the 3D book. The board is never silently replaced by hand-tuned anchors.
 - Opening and closing paper mechanisms are the default motion. Add independent character/object animation only when the brief calls for it and it does not undermine the paper construction; test it as a separate state system.
 - Preserve plain paper backs, fine contour-edge shading, rear supports, folds, and restrained contact shadows. Do not add exposed front feet.
 - Treat page blocks and static paper surfaces as separate depth surfaces. Never use a broad slope-based polygon offset to push printed pages behind page blocks; verify oblique views with the page-depth gate.
@@ -52,13 +54,16 @@ Load `references/qa-gates.md` and treat its exit criteria as blocking checkpoint
 
 1. Run world reconnaissance and bind the book to this world before storyboarding (Step 0, Gate 0b).
 2. Capture an existing-book baseline before edits.
-3. Run the storyboard/data gate before asset batches.
-4. Run asset intake QA immediately after every generation, crop, sheet split or background-removal batch.
-5. Build and approve one representative spread before multiplying a new visual or mechanical pattern.
-6. Run state, ownership and adjacent-turn QA after every changed spread; batch only truly mechanical equivalents.
-7. Run chapter QA before moving to the next chapter when working chapter by chapter.
-8. Run page-depth QA whenever page blocks, surfaces, spine, camera or render order change.
-9. Run full regression after shared renderer/navigation/audio changes and before final publication.
+3. Run the storyboard/data gate before composition boards.
+4. Generate and approve one representative composition board before expanding a visual pattern (Gate 2a).
+5. Annotate boardItems and run the decomposition contract before producing assets (Gate 2b).
+6. Run asset intake QA immediately after every crop, re-generation, sheet split or background-removal batch.
+7. Reconstruct the spread in 2D and block 3D work until the board proof passes (Gate 2c).
+8. Build and approve one representative 3D spread before multiplying the renderer pattern (Gate 3).
+9. Run state, ownership and adjacent-turn QA after every changed spread; batch only truly mechanical equivalents.
+10. Run chapter QA before moving to the next chapter when working chapter by chapter.
+11. Run page-depth QA whenever page blocks, surfaces, spine, camera or render order change.
+12. Run full regression after shared renderer/navigation/audio changes and before final publication.
 
 A failed gate stops downstream expansion until fixed or explicitly documented and accepted. Record unrun checks and limitations. Evidence becomes stale whenever the related layout, asset, audio or behavior changes.
 
@@ -99,35 +104,87 @@ Keep causal order and key dialogue. Do not bring later characters or reveals for
 
 Choose spread count from story beats, not a fixed pages-per-chapter quota. Distinguish 6 spreads from 6 individual pages. For a large book, approve one representative chapter before broad rollout; report exactly which chapters are complete. Follow `references/expansion-and-release.md` when adding chapters or publishing an existing Work.
 
-### 3. Lock Scale and Composition
+### 3. Generate and Approve the Composition Board
 
-For each spread declare a focal subject and scale hierarchy. Trees exceed people in a literal forest; low grass does not exceed the main animal; props relate to the hands or setting that use them. Enlarged drawing exhibits are explicitly nonliteral.
+For each spread, generate one complete composition board from the storyboard and the bound world
+references. The board answers “what does this page look like?”: framing, relative scale, left/right
+placement, foreground crop, midground subjects, distant scenery and the intended visual path.
 
-Measure opaque/visible bounds, not the texture canvas. Preserve aspect ratio using `scale = min(maxWidth / visibleWidth, maxHeight / visibleHeight)`. Set pose-specific limits: a seated or wide-scarf pose cannot inherit narrow standing width blindly.
+Record it as `spread.compositionBoard` with a stable source Work, local file, canvas and
+`coordinateSpace: "full-spread"`. This is the spread's layout master. It is not `pageArt`, not the
+published background and not a license to flatten the whole scene into one texture. Page art remains
+a low-detail ground surface; characters, landmarks, trees and important props remain independent
+standees.
 
-Design rear silhouettes, midground actors and low foreground. Avoid a row of identical trees, a trunk growing from a character's head, feet detached from the page, or a giant foreground prop hiding faces. Richness is coherent environmental detail, not a fixed standee count. Deliberate empty space still belongs to a complete scene.
+Use a complete textured board for art direction when useful. If direct cutting is desired, generate or
+prepare a white cut-safe representation, but do not let a second image silently become a competing
+layout. The approved board and its recorded regions are authoritative.
 
-### 4. Produce and Audit Assets
+Do not produce final standees before the representative board is approved. A model-generated board may
+add atmospheric elements; that is fine, but every deliberate addition must later be marked as an asset
+or explicitly recorded as excluded atmosphere.
 
-Run QA Gate 2 after each asset batch; do not wait until all chapters are populated. Run `scripts/audit-assets.cjs` for every schema v2 production manifest.
+### 4. Decompose the Board and Produce Assets
 
-Reuse approved identity references. Generate missing characters/poses and environmental elements in a unified medium. Generate low-contrast, unlettered page-surface textures separately from upright assets.
+After board approval, the agent writes `spread.boardItems`. Each item has a stable id, `boardRect`
+in board pixels, material/atom reference, role, layer, page side, depth band and `cutMode` (`crop`,
+`regenerate` or documented `manual`). Every production `scene[]` item points back through
+`boardItemId` and uses `placementSource: "board"`.
 
-Inspect alpha over light and dark backgrounds; complete hair, hands, tails, scarves and roots must survive cropping. Preserve good original alpha. Background-removal success does not guarantee preserved dimensions or limbs. Split sheets using observed cell bounds, not guessed equal cells after a service has cropped them.
+Run `scripts/audit-assets.cjs` after every asset batch. Use `cutMode: crop` only when the board region
+has a clean silhouette. If a character or landmark is stuck to scenery, paper texture or another
+asset, use `cutMode: regenerate` with both the atom cover and the composition board. Regeneration may
+repair pixels, resolution or alpha, but it may not change the approved `boardRect`, page side, layer,
+pose intent or scale relationship.
 
-Record source URLs, crop rectangles, alpha bounds, final sizes, intended physical scale, and generation provenance. Keep identity references separate from pixel provenance. Do not include secrets or claim generated voices are real children.
+Use the world's character and location covers as identity references. Keep page ground, horizontal
+steps and other ground surfaces in `pageArt`; use independent standees for vertical risers, railings,
+trees, buildings and foreground framing. Record source board, crop region, alpha bounds, masks, final
+size and provenance. A failed crop is an asset failure, not permission to redesign the composition.
 
-### 5. Implement the Book
+### 5. Reconstruct in 2D and Calibrate Placement
 
-Pass QA Gate 3 on one representative spread, then Gate 4 after each changed spread/state. If page-turn or shared renderer code changes, schedule Gate 6.
+Before Three.js, rebuild a 2D proof from the accepted assets and board regions:
 
-Use the structural guidance in `references/engineering.md` and the runtime contract in `references/runtime-contract.md`. Keep chapter identity, spread identity, ordered navigation, passage identity, scene ownership, and audio identity separate. Inserted spreads must not rename old audio or break bookmarks.
+```bash
+node scripts/reconstruct-board.mjs \
+  --book=/path/to/data/book.json --root=/path/to \
+  --spread=chapter-01-spread-01 \
+  --out=/path/to/qa/chapter-01-spread-01-reconstruction.svg
+```
 
-Create every spread as its own scene. A turn is a continuous leaf transformation, not an invisible jump between duplicate books. Page texture and standees must follow the same page frame. Use fixed page-block heights unless requested otherwise.
+The proof must have no missing or duplicate required items; every scene item must map to one board
+item; asset ids must agree; page side, layer and intended overlap must be explicit; and the relative
+position, scale and framing of the approved board must survive. Direct crops can be pixel-compared;
+regenerated assets are checked by region, silhouette, identity and scale rather than exact pixels.
 
-When dialogue-driven changes are wanted, describe deterministic target states. Fold the old actor fully before changing geometry, pose or position; then raise the replacement. No sliding actors across paper. Synchronize mesh, alpha shadows, back/edge material, dimensions, crease and rear supports. Reverse reading and restored bookmarks must produce the same state.
+A failed 2D proof blocks 3D work. Do not fix it by hand-editing anchors. Repair the board annotation,
+the asset branch or the source board. Then use `templates/runtime/board-to-book.mjs` to derive x,
+size, page side and the declared depth band. Board y is not raw Three.js z: use `boardToBook.depthBands`
+and a fixed canonical camera profile. The mapper is an initial placement: verify projected bounds and occlusion against the board, and record any physical calibration adjustments. Wide background curtains may use `coordinateSpace: "spread"`
+and `crossGutter: true` only when the board item explicitly permits it.
 
-### 6. Reading and Audio
+### 6. Implement the Book
+
+Pass Gate 3 only after the board and 2D reconstruction gates pass. Then run Gate 4 after each changed
+spread/state. If page-turn or shared renderer code changes, schedule Gate 6.
+
+Use `references/engineering.md` and `references/runtime-contract.md`. Keep chapter identity, spread
+identity, board identity, passage identity, scene ownership and audio identity separate. Inserted spreads
+must not rename old audio or break bookmarks.
+
+Create every spread as its own scene. A turn is a continuous leaf transformation, not an invisible jump
+between duplicate books. Page texture and standees must follow the same page frame. Use fixed page-block
+heights unless requested otherwise. Start from `templates/runtime/page-turn-state.mjs` and the
+parameterized Three.js runtime when appropriate; do not copy story-specific scene recipes from a case
+study.
+
+When dialogue-driven changes are wanted, describe deterministic target states. Fold the old actor fully
+before changing geometry, pose or position; then raise the replacement. No sliding actors across paper.
+Synchronize mesh, alpha shadows, back/edge material, dimensions, crease and rear supports. Reverse
+reading and restored bookmarks must produce the same state.
+
+### 7. Reading and Audio
 
 Run the audio and persistence portions of QA Gate 5 as soon as the first narrated multipassage spread works; repeat at chapter completion.
 
@@ -137,18 +194,19 @@ Use ended events to advance to the next passage, then after a deliberate pause t
 
 Keep explicit audio paths on passages. Reuse unchanged recordings after splitting spreads. Persist versioned bookmark/settings locally and migrate earlier ids/offsets. Restore silently. Do not promise cross-device storage without an implemented backend.
 
-### 7. Verify and Deliver
+### 8. Verify and Deliver
 
 Complete Gate 5 for every changed chapter and Gate 6 at publication scope. Run the data validator, then actual browser QA. Data validation is not visual QA. Do not rerun only the final list while skipping the earlier asset and representative-spread gates.
 
 - Click actual UI arrows forward/back through every changed spread and chapter boundary; test rapid clicks, directory jumps, bookends, and old bookmarks.
 - Play real audio: multiple passages on one spread, end-to-turn, pause/resume, manual cancellation, errors, replay and final stop.
 - Inspect front, back, oblique view and intermediate turn screenshots. Test at least desktop and 390x844 mobile. Canvas-pixel variance must be nonzero, assets loaded, UI separate, text readable.
+- For schema v3, run `scripts/reconstruct-board.mjs` for every changed spread and store its SVG/report. A failed or timed-out reconstruction blocks publication.
 - Run the page-depth gate: compare full-book and paper-only renders at low, normal and side camera angles. Confirm printed page pixels are not hidden by page blocks or spine; record the sample grid and threshold.
 - Sample both turn directions across every affected adjacent pair, including unchanged neighbors. Filter out detached/hidden legacy meshes. Check noncoplanar paper/support edges against page surfaces and the moving leaf; report pair, direction, progress, asset/support id, hit surface, sample count, failures and limitations. Never call finite sampling a proof of no intersection.
 - Freeze at endpoint and near-endpoint progress values. Assert no attachment position/orientation jump and no whole-book scene reset.
 - Check every pose and reveal state when used, including reverse and restored states. Regenerate affected directory thumbnails after final layout changes.
-- Finish/close test browser sessions; record shutdown errors as errors, not clean test completion. Store reproducible tests with the project, not only in temporary files.
+- Finish/close test browser sessions; record shutdown errors as errors, not clean test completion. A browser timeout, thumbnail failure or incomplete shutdown is a failed gate, not a warning. Store reproducible tests with the project, not only in temporary files.
 - For an adapter exposing the runtime contract, run `scripts/runtime-contract-check.cjs` across every adjacent pair in both directions. Validate any browser-produced page-depth report with `scripts/verify-depth-report.cjs`.
 - Re-run `scripts/world-survey.cjs --binding=<data/book.json>` so every bound name still resolves to an atom in this world. A chapter that invents canon without an `authored` entry is an error, not a gap.
 - Publish, verify returned ready state, and summarize implemented scope versus deliberate simplifications. Hand over the Work using interaction-components; use next-steps for creative follow-on choices.

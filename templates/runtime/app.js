@@ -1,7 +1,7 @@
 // app.js — reading UI, navigation, bookmarks and failure surface around the paper book.
 import { PopupBook } from './book3d.js';
 import { PaperAudio } from './audio.js';
-import { loadBookmark, saveBookmark } from './store.js';
+import { configureStore, loadBookmark, saveBookmark } from './store.js';
 
 const $ = sel => document.querySelector(sel);
 const audio = new PaperAudio();
@@ -33,7 +33,7 @@ let book = null;
 let data = null;
 let turning = false;
 let pending = null;
-let bookmark = loadBookmark();
+let bookmark = null;
 
 function fail(message) {
   dom.banner.textContent = message;
@@ -175,6 +175,9 @@ async function main() {
     fail('书稿没有加载成功。');
     return;
   }
+  configureStore(data.bookmarks?.storageKey || `paper-storybook:${location.pathname}`);
+  bookmark = loadBookmark();
+  document.title = data.title || "Paper Storybook";
   book = new PopupBook(dom.canvas, data, {
     onStart: kind => { if (kind === 'open') audio.open(); if (kind === 'turn') audio.fold(); },
     onSettled: state => {
@@ -194,10 +197,10 @@ async function main() {
   book.bindDrag(dom.canvas);
   dom.gateBtn.disabled = true;
   dom.gateTitle.textContent = data.title || '纸艺立体书';
-  globalThis.__BOOK_STORAGE_KEY__ = (data.bookmarks && data.bookmarks.storageKey) || 'paper-storybook/v1';
+
   const sub = document.querySelector('[data-book-sub]');
   if (sub) sub.textContent = data.language === 'zh' ? '纸艺 · 立体书' : 'paper storybook';
-  document.querySelector('.gate-sub').textContent = `${data.chapters.length} 章 · ${data.spreadOrder.length} 跨页 · 和纸木刻`;
+  document.querySelector('.gate-sub').textContent = `${data.chapters.length} 章 · ${data.spreadOrder.length} 跨页`;
 
   try {
     await book.load((done, total) => {
@@ -224,6 +227,8 @@ async function main() {
     get failedAssets() { return book.failedAssets || []; },
     get leafSample() { return book.leafSample(); },
     get standeeStates() { return book.standeeStates(); },
+    attachmentSnapshot() { return book.attachmentSnapshot(); },
+    pageSurfaceAudit() { return book.pageSurfaceAudit(); },
     get collisions() { return book.collisions(); },
     get spreadCount() { return book.spreads.length; },
     get spreadIds() { return book.spreads.map(s => s.id); },
