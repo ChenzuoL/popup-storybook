@@ -38,16 +38,16 @@ User preferences override these defaults. Existing application contracts take pr
 - A chapter contains multiple spreads. A spread is an open left/right page pair; it counts as two interior pages.
 - One UI right-arrow click turns exactly one spread; left reverses one spread. Ignore further turn requests during a turn.
 - Provide a close-book control that animates the binding frame back to the closed state from any spread, cancels active narration, and persists the current bookmark. On reopening, prepare the bookmarked spread's textures before animation starts to avoid flashing through the first page.
-- No on-book arrows, floating triangular corners, or click-to-turn standees. Canvas drag rotates the book. Keep auto narration separate from manual navigation.
+- No on-book arrows, floating triangular corners, or click-to-turn standees. Canvas drag is **grab-the-object**: the point under the pointer follows the pointer (the inverse of a camera-slide). Yaw must be wide enough to walk around to the back of the book; pitch stays above the table, from almost top-down to almost table-level; the wheel zooms with conventional scroll-up-in. Keep auto narration separate from manual navigation.
 - One spread contains one key scene and one or several speaker-attributed passages. Never force a page turn after every sentence.
 - For narration-led editions, keep prose out of printed page artwork and put chapter labels, narration and dialogue in the reading UI. For educational, facsimile or user-requested text-on-page editions, printed text is allowed only when legibility, gutter safety, localization and accessibility are explicitly designed and tested.
 - Printed page art supplies ground, paths, rugs, soil, and low detail. Independent transparent standees supply characters, vegetation and important props.
 - A production spread normally has all three depth layers: a background curtain or distant silhouette, one or more midground subjects/architecture, and a low foreground prop. A deliberately sparse spread must declare `scenePolicy.sparseIntent` and a reason.
-- New spreads are page-first: approve one composition board, decompose it into board regions, produce/crop assets without changing those regions, pass 2D reconstruction, then map into the 3D book. The board is never silently replaced by hand-tuned anchors.
+- New spreads are page-first: the **creator** approves one composition board, then the agent decomposes it into board regions, produce/crop assets without changing those regions, pass 2D reconstruction, then map into the 3D book. Agent inspection is not creator approval. The board is never silently replaced by hand-tuned anchors.
 - Opening and closing paper mechanisms are the default motion. Add independent character/object animation only when the brief calls for it and it does not undermine the paper construction; test it as a separate state system.
 - Preserve plain paper backs, fine contour-edge shading, rear supports, folds, and restrained contact shadows. Do not add exposed front feet.
 - Treat page blocks and static paper surfaces as separate depth surfaces. Never use a broad slope-based polygon offset to push printed pages behind page blocks; verify oblique views with the page-depth gate.
-- Reading UI never covers the book canvas. Inspection mode may collapse prose but must retain playback and a visible way back.
+- Reading UI never covers the book canvas. Inspection mode may collapse prose but must retain playback and a visible way back. The chrome of that UI (paper sidebar, catalogue, or almost none) is a creator choice asked at Step 1, not an implementation leftover.
 
 ## QA Cadence
 
@@ -56,7 +56,7 @@ Load `references/qa-gates.md` and treat its exit criteria as blocking checkpoint
 1. Run world reconnaissance and bind the book to this world before storyboarding (Step 0, Gate 0b).
 2. Capture an existing-book baseline before edits.
 3. Run the storyboard/data gate before composition boards.
-4. Generate and approve one representative composition board before expanding a visual pattern (Gate 2a).
+4. Generate one representative composition board, hand it to the creator, and wait. Do not expand a visual pattern or produce standees until they approve it (Gate 2a).
 5. Annotate boardItems and run the decomposition contract before producing assets (Gate 2b).
 6. Run asset intake QA immediately after every crop, re-generation, sheet split or background-removal batch.
 7. Reconstruct the spread in 2D and block 3D work until the board proof passes (Gate 2c).
@@ -93,9 +93,22 @@ Before the storyboard. Find out what this world already holds, then bind the boo
 
 ### 1. Establish Scope
 
-For a clear brief, proceed. For a broad brief with multiple open direction choices, use the questionnaire skill once. For one missing scope decision, ask one chat question and stop. Ask what should be made, not which library to use.
+World reconnaissance first, then one questionnaire round, then any image. The round names real atoms this world already holds. Do not generate a composition board, a standee or a cover until the round has returned.
 
-Confirm source story/adaptation rights, audience, chapter range, visual style, and whether narration is required. Avoid verbatim copying of protected translations or publisher-specific illustrations without authorization. Mark adaptations as adaptations.
+For a clear brief that already names story, scope, printed medium, reading chrome and narration, skip the round. For a broad brief, use the questionnaire skill once. For one missing scope decision, ask one chat question and stop. Ask what should be made, not which library to use.
+
+A new-book round must cover, in this order, every item the brief left open:
+
+1. **Which story / which chapter** — options grounded in this world's characters, locations, events or legends.
+2. **How far this run** — one spread to nail the craft / one complete chapter / a multi-chapter book. Cards, not a slider.
+3. **Printed medium of this book** — follow the world's `visualStyle` / watercolor paper-cut / vintage print. Record the answer as the book's own style. Do not write it into `manifest.worldConfig.visualStyle`.
+4. **Reading chrome** — paper sidebar (warm stock, titles and passages beside the book) / catalogue (dark, entry-like) / almost none (arrows, close-book, nothing else). This is a creator choice, not a default the agent keeps.
+5. **Narration** — recorded or browser-voiced passages, or silent turning.
+6. **Point of view and audience** only when they would change the prose.
+
+Do not ask whether the creator wants to review composition boards. They always do. Do not ask which renderer to use.
+
+Confirm source story/adaptation rights. Avoid verbatim copying of protected translations or publisher-specific illustrations without authorization. Mark adaptations as adaptations.
 
 ### 2. Storyboard Before Assets
 
@@ -107,23 +120,32 @@ Choose spread count from story beats, not a fixed pages-per-chapter quota. Disti
 
 ### 3. Generate and Approve the Composition Board
 
-For each spread, generate one complete composition board from the storyboard and the bound world
-references. The board answers “what does this page look like?”: framing, relative scale, left/right
-placement, foreground crop, midground subjects, distant scenery and the intended visual path.
+For the representative spread first — not the whole book — generate one complete composition board
+from the storyboard and the bound world references. The board answers “what does this page look
+like?”: framing, relative scale, left/right placement, foreground crop, midground subjects, distant
+scenery and the intended visual path.
 
-Record it as `spread.compositionBoard` with a stable source Work, local file, canvas and
-`coordinateSpace: "full-spread"`. This is the spread's layout master. It is not `pageArt`, not the
-published background and not a license to flatten the whole scene into one texture. Page art remains
-a low-detail ground surface; characters, landmarks, trees and important props remain independent
-standees.
+Record it as `spread.compositionBoard` with a stable source Work, local file, canvas,
+`coordinateSpace: "full-spread"` and `status: "review"`. This is the spread's layout master. It is
+not `pageArt`, not the published background and not a license to flatten the whole scene into one
+texture. Page art remains a low-detail ground surface; characters, landmarks, trees and important
+props remain independent standees.
+
+**Halt for the creator.** Hand the board Work over with interaction-components. Ask once, in their
+language: keep this board and start cutting / redraw it / change these named things. Then stop the
+turn. Agent inspection of framing and identity is not approval. `status` stays `review` until the
+creator answers. Do not decompose, crop, regenerate standees, build 3D or publish in the same turn
+as an unapproved board.
+
+On confirmation, set `status: "approved"` and only then run Step 4. Remaining spreads: generate their
+boards and halt again, unless the creator already said the approved pattern may roll forward.
 
 Use a complete textured board for art direction when useful. If direct cutting is desired, generate or
 prepare a white cut-safe representation, but do not let a second image silently become a competing
 layout. The approved board and its recorded regions are authoritative.
 
-Do not produce final standees before the representative board is approved. A model-generated board may
-add atmospheric elements; that is fine, but every deliberate addition must later be marked as an asset
-or explicitly recorded as excluded atmosphere.
+A model-generated board may add atmospheric elements; that is fine, but every deliberate addition
+must later be marked as an asset or explicitly recorded as excluded atmosphere.
 
 ### 4. Decompose the Board and Produce Assets
 

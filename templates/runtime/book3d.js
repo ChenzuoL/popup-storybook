@@ -20,6 +20,11 @@ const PAGE_COVER_EPS = 0.0001; // only the visually flat endpoint belongs exclus
 const RISE_MS = 430;
 const RISE_STAGGER = 70;
 const OPEN_MS = 1500;
+const ORBIT_YAW = 2.55;        // ~146°: walk around to the back of the book
+const ORBIT_PITCH_MIN = 0.28;  // almost top-down
+const ORBIT_PITCH_MAX = 1.48;  // almost table-level, never under the table
+const ORBIT_ZOOM_MIN = 0.48;
+const ORBIT_ZOOM_MAX = 1.9;
 
 const easeInOut = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const smooth = t => t * t * (3 - 2 * t);
@@ -905,21 +910,28 @@ export class PopupBook {
   }
 
   bindDrag(el) {
-    const down = e => { this.drag.active = true; this.drag.x = e.clientX; this.drag.y = e.clientY; this.drag.moved = 0; };
+    // Grab-the-object: the point under the pointer follows the pointer. Inverse of a camera-slide.
+    const down = e => {
+      this.drag.active = true; this.drag.x = e.clientX; this.drag.y = e.clientY; this.drag.moved = 0;
+      try { el.setPointerCapture(e.pointerId); } catch { /* capture is best-effort */ }
+    };
     const move = e => {
       if (!this.drag.active) return;
       const dx = e.clientX - this.drag.x, dy = e.clientY - this.drag.y;
       this.drag.x = e.clientX; this.drag.y = e.clientY; this.drag.moved += Math.abs(dx) + Math.abs(dy);
-      this.drag.yaw = Math.max(-0.62, Math.min(0.62, this.drag.yaw + dx * 0.004));
-      this.drag.pitch = Math.max(0.55, Math.min(1.35, this.drag.pitch + dy * 0.003));
+      this.drag.yaw = Math.max(-ORBIT_YAW, Math.min(ORBIT_YAW, this.drag.yaw - dx * 0.005));
+      this.drag.pitch = Math.max(ORBIT_PITCH_MIN, Math.min(ORBIT_PITCH_MAX, this.drag.pitch - dy * 0.004));
     };
-    const up = () => { this.drag.active = false; };
+    const up = e => {
+      this.drag.active = false;
+      try { el.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+    };
     el.addEventListener('pointerdown', down);
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
     el.addEventListener('wheel', e => {
       e.preventDefault();
-      this.drag.zoom = Math.max(0.72, Math.min(1.35, this.drag.zoom * (1 + Math.sign(e.deltaY) * 0.06)));
+      this.drag.zoom = Math.max(ORBIT_ZOOM_MIN, Math.min(ORBIT_ZOOM_MAX, this.drag.zoom * (1 - Math.sign(e.deltaY) * 0.08)));
     }, { passive: false });
     this._unbindDrag = () => {
       el.removeEventListener('pointerdown', down);

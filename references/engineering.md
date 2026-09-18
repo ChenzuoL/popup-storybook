@@ -6,6 +6,14 @@ Use distinct objects for back board, hinged front board, cloth spine/joints, lef
 
 Keep page block heights stable unless the brief requires physically changing stacks. Hard cover motion and leaf motion are separate. Let the book open into a legible, close, front-biased perspective; constrain camera framing to the available canvas below/above UI rather than the total window.
 
+### Inspection drag
+
+Canvas drag is grab-the-object, not camera-slide: invert both axes so the point under the pointer
+follows the pointer. Clamp yaw wide enough to walk around to the back of the book (about ±2.5 rad),
+pitch from almost top-down to almost table-level (never under the table), and zoom from a tight
+close-up to a full-book view. Scroll-up zooms in. A ±0.6 rad yaw cage that only peeks at one corner
+is a defect, not a default.
+
 ### Binding Frame Architecture
 
 For opening/closing behavior, use a unified binding frame containing the front cover, left page block, and left page surface as a single rigid assembly rotating around the spine hinge. This ensures the cover, printed page texture, and physical page stack move together during open/close animations without separate teleportation or flattening.
