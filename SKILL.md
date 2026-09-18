@@ -37,6 +37,7 @@ User preferences override these defaults. Existing application contracts take pr
 
 - A chapter contains multiple spreads. A spread is an open left/right page pair; it counts as two interior pages.
 - One UI right-arrow click turns exactly one spread; left reverses one spread. Ignore further turn requests during a turn.
+- Provide a close-book control that animates the binding frame back to the closed state from any spread, cancels active narration, and persists the current bookmark. On reopening, prepare the bookmarked spread's textures before animation starts to avoid flashing through the first page.
 - No on-book arrows, floating triangular corners, or click-to-turn standees. Canvas drag rotates the book. Keep auto narration separate from manual navigation.
 - One spread contains one key scene and one or several speaker-attributed passages. Never force a page turn after every sentence.
 - For narration-led editions, keep prose out of printed page artwork and put chapter labels, narration and dialogue in the reading UI. For educational, facsimile or user-requested text-on-page editions, printed text is allowed only when legibility, gutter safety, localization and accessibility are explicitly designed and tested.
