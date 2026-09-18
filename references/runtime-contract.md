@@ -9,9 +9,15 @@ current() // { spreadId, chapterId, index, count, phase, turning, ready }
 turn(direction) // locks input until a settled state
 seekTurn(progress) // freeze the active turn at normalized [0,1] for QA only
 settled() // true only after attachments have returned to page-owned parents
+open(targetIndex) // open from closed state to a specific spread, preparing textures before animation
+close() // close from current spread to closed state, cancel narration, restore gate overlay
 ```
 
 `seekTurn` is a test hook. It must not change the reader's settled bookmark or call audio/page completion handlers.
+
+`open(targetIndex)` must prepare the destination spread's textures (both pages) before starting the binding animation, so the book opens directly to the bookmarked spread without flashing through the first page.
+
+`close()` must animate the binding frame from the current open angle back to closed (vertical), hide the turning leaf, cancel any active narration, and restore the gate overlay with bookmark-aware messaging. The cover art remains visible throughout closure. After reaching the closed state, persist the current spread index as a bookmark.
 
 ## Required ownership
 

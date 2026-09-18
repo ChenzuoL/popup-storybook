@@ -22,6 +22,10 @@ Every production spread records one approved `compositionBoard`:
 }
 ```
 
+`status` is `draft` while generating, `review` while waiting for the creator, and `approved` only
+after they confirm. Agent visual inspection never writes `approved`. Production validation still
+requires `approved`.
+
 A textured, complete scene board is valid as an art-direction source. A pure-white board is easier to
 segment. Do not confuse the two:
 
@@ -130,9 +134,10 @@ page-depth decision. Wide background curtains may use `coordinateSpace: "spread"
 
 ## One-shot meaning
 
-“One shot” means one user-facing production run, not blind image generation. The agent may repair a
-failed asset internally, but it must preserve the approved board and rerun the blocked gate. The
-user should not have to hand-tune dozens of coordinates.
+“One shot” means one user-facing production run after the creator has approved the board, not blind
+image generation and not a skip of Gate 2a. Internal repair of a failed crop or cutout is allowed;
+silently replacing the board, or generating standees from a `review` board, is not. The user should
+not have to hand-tune dozens of coordinates.
 
 The run is complete only when:
 

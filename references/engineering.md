@@ -6,6 +6,20 @@ Use distinct objects for back board, hinged front board, cloth spine/joints, lef
 
 Keep page block heights stable unless the brief requires physically changing stacks. Hard cover motion and leaf motion are separate. Let the book open into a legible, close, front-biased perspective; constrain camera framing to the available canvas below/above UI rather than the total window.
 
+### Inspection drag
+
+Canvas drag is grab-the-object, not camera-slide: invert both axes so the point under the pointer
+follows the pointer. Clamp yaw wide enough to walk around to the back of the book (about ±2.5 rad),
+pitch from almost top-down to almost table-level (never under the table), and zoom from a tight
+close-up to a full-book view. Scroll-up zooms in. A ±0.6 rad yaw cage that only peeks at one corner
+is a defect, not a default.
+
+### Binding Frame Architecture
+
+For opening/closing behavior, use a unified binding frame containing the front cover, left page block, and left page surface as a single rigid assembly rotating around the spine hinge. This ensures the cover, printed page texture, and physical page stack move together during open/close animations without separate teleportation or flattening.
+
+The binding frame holds `bindingContents` (cover art plane, cover board geometry, left page surfaces) and rotates from 0 (closed, vertical) to a settled open angle. At `progress=0` the cover faces forward; at `progress=1` the cover lies flat on the table. During closure, hide the leaf group and animate only the binding rotation. In the closed state, hide all standee groups, display only the cover group, set the leaf invisible, and bind the destination spread's left page texture to the cover's inside surface for the next opening.
+
 ## Board-first source model
 
 For schema v3, the approved `compositionBoard` is the single visual layout source for a spread.
@@ -71,6 +85,8 @@ Use front illustration color with alpha-tested silhouette. On back-facing fragme
 A subtle alpha-neighbor edge shader can suggest cut edges; label it as shading, not actual thickness. If physical thickness is required, derive/extrude the alpha contour with a tested tracing/triangulation library, simplify it, and verify holes and disconnected islands. Do not extrude the enclosing rectangle.
 
 Supports fold behind the standee. Their attachment point and width depend on the current pose height and hinge location. Remove detached support objects when replacing scenes. Hide creases when the corresponding actor is absent. Set lighting, paper grain and contact shadow opacity conservatively; do not bleach the printed artwork.
+
+For rear support visibility, use low-contrast semi-transparent paper tone (e.g., opacity 0.2–0.3, warm neutral color matching page stock) so structural fold geometry remains legible without competing with front illustration. Support panels should read as folded paper, not opaque backing cards.
 
 ## Asset Manifest Extras
 
@@ -147,3 +163,5 @@ For collision sampling, intersect visible mesh triangle edges against the visibl
 - Directory thumbnails retain deleted corner markers or old scene layouts.
 - Test output says PASS before a timed-out browser shutdown; retain the distinction in verification notes.
 - A thumbnail or published iframe fails while the local renderer passes; publication QA must use the live Work and fail closed.
+- Hiding the cover group during `close()` prevents the binding frame from animating back to the closed state; keep cover art visible throughout closure and hide only standee/leaf groups.
+- Updating rear support geometry in `updateStandees()` with an early `if (!this.state.open) return` blocks necessary updates during the closing transition when `open` becomes false before supports finish folding.

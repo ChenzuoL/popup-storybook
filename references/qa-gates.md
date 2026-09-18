@@ -45,16 +45,19 @@ QA is part of production, not a final ceremony. Run the smallest relevant gate i
 **When:** after the storyboard and before final standee generation; rerun whenever the scene brief,
 world references, composition board or visual composition changes.
 
-- Generate one complete board per spread from the bound character/location references and the spread
-  event. The board is a layout master, not `pageArt` and not the final flattened scene.
+- Generate the **representative** spread's board first, not a batch of every spread.
+- The board is a layout master, not `pageArt` and not the final flattened scene.
 - Confirm the board has the intended aspect, framing, focal subject, relative scale, left/right page
   relationship, foreground crop, midground subject and distant layer.
-- Record one stable `compositionBoard.sourceWork`, local file, canvas and approval status per spread.
-  A later generated image may not silently replace it.
+- Record one stable `compositionBoard.sourceWork`, local file, canvas and `status: "review"` per
+  changed spread. A later generated image may not silently replace it.
 - Inspect the board for invented or missing elements. Extra petals, clouds or haze become explicit
   atmosphere records or are deliberately excluded; they do not disappear into an unnamed crop.
+- **Hand the board to the creator and stop.** Agent inspection is not approval. Do not start Gate 2b
+  or any standee generation in the same turn.
 
-**Exit:** one board is approved as the sole visual layout source for each changed spread.
+**Exit:** the creator has approved the board (`status: "approved"`) as the sole visual layout source
+for each changed spread.
 
 ## Gate 2b: Board Decomposition
 
