@@ -113,8 +113,24 @@ Only then may the spread enter 3D.
   order must survive the board-to-book mapping. Board y is not raw Three.js z.
 - Turn into and out of the spread in both directions at endpoints and intermediate progress.
 - Use canvas-pixel checks only as a blank-render guard; inspect screenshots as well.
+- Confirm grab-the-object drag: inverted axes, yaw wide enough to walk around the book, pitch above
+  the table, scroll-up zooms in. Confirm the reading chrome matches the Step 1 choice.
+- **Hand the first playable Work to the creator and stop.** Agent screenshots are not approval. Ask:
+  hand feel is fine, continue remaining pages / change drag or reading chrome first / stop on this page.
 
-**Exit:** composition and paper mechanics are approved. Propagate this pattern only after the gate passes.
+**Exit:** the creator has approved composition, drag, chrome and paper mechanics. Propagate this pattern
+only after that confirmation.
+
+## Gate 3a: Narration Fallback
+
+**When:** as soon as Step 1 chose voiced narration and `generate` has no speech model, or a narration
+file fails to generate. Before labeling the player or shipping silent pages.
+
+- Do not silently switch to browser `speechSynthesis` or omit the missing-file label.
+- Ask once: browser voice, labeled in the UI / silent this page / wait for files. Stop the turn.
+- If they pick browser voice, the player must say so in the creator's language (e.g. 「浏览器朗读（这一页没有配音文件）」).
+
+**Exit:** the creator has chosen the fallback. Record it on the book; do not treat it as a recorded voice.
 
 ## Gate 4: Changed Spread or State
 
@@ -139,8 +155,11 @@ Only then may the spread enter 3D.
 - Read all current-spread passages in the UI. If audio exists, play real files through same-spread passages and across a page turn.
 - Check directory jumps, chapter labels, thumbnails, mobile/desktop layout and silent bookmark restoration.
 - Review a contact sheet for rhythm, distinct composition, scale consistency and accidental repeated pose/layout.
+- **Ask the creator before starting the next chapter.** Keep this chapter as it is / open the next,
+  naming the region or legend. Stop the turn. Do not storyboard or generate the next chapter here.
 
-**Exit:** chapter status is recorded as passed, passed with named limitations, or blocked. Do not call the whole book complete.
+**Exit:** chapter status is recorded as passed, passed with named limitations, or blocked; and the
+creator has said whether to open the next chapter. Do not call the whole book complete.
 
 ## Gate 5a: Page Depth and Occlusion
 
@@ -188,7 +207,7 @@ from residual risk.
 | Page turn, book structure or carrier transform | 3, 4 for all affected neighbors, 5a, 6 |
 | Paper material/back/edge/support | 3 front/back, 4, 5a, 6 |
 | Camera, depth, render order or page blocks | 3, 5a, 6 |
-| Audio text/file/player | 1, 5 audio, 6 audio |
+| Audio text/file/player | 1, 3a if no speech model, 5 audio, 6 audio |
 | UI, responsive layout, directory/bookmark | 5 desktop/mobile, 6 navigation/persistence |
 | Thumbnail only | inspect target thumbnail and confirm it represents final scene |
 

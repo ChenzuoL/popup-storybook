@@ -60,13 +60,23 @@ Load `references/qa-gates.md` and treat its exit criteria as blocking checkpoint
 5. Annotate boardItems and run the decomposition contract before producing assets (Gate 2b).
 6. Run asset intake QA immediately after every crop, re-generation, sheet split or background-removal batch.
 7. Reconstruct the spread in 2D and block 3D work until the board proof passes (Gate 2c).
-8. Build and approve one representative 3D spread before multiplying the renderer pattern (Gate 3).
+8. Build one representative 3D spread, hand it to the creator, and wait. Do not multiply the renderer pattern until they confirm drag, chrome and paper mechanics (Gate 3).
 9. Run state, ownership and adjacent-turn QA after every changed spread; batch only truly mechanical equivalents.
-10. Run chapter QA before moving to the next chapter when working chapter by chapter.
+10. Run chapter QA, then ask the creator before starting the next chapter (Gate 5).
 11. Run page-depth QA whenever page blocks, surfaces, spine, camera or render order change.
 12. Run full regression after shared renderer/navigation/audio changes and before final publication.
 
 A failed gate stops downstream expansion until fixed or explicitly documented and accepted. Record unrun checks and limitations. Evidence becomes stale whenever the related layout, asset, audio or behavior changes.
+
+## Creator halt points
+
+The questionnaire skill is used **once**, at Step 1. Every later stop is one question in the creator's language, then the turn ends. Do not fold these into a second questionnaire.
+
+1. **Step 1 — direction.** World reconnaissance, then one questionnaire: story, scope, printed medium, reading chrome, narration, and POV/audience only if they change the prose. No image until it returns.
+2. **Gate 2a — composition board.** Representative board at `review`. Hand it over. Ask: keep this board and start cutting / redraw it / change these named things. Stop. Repeat for later boards unless they already said the approved pattern may roll forward.
+3. **Gate 3 — first playable 3D spread.** After the first spread can open, turn and be orbited: hand the Work over. Ask: hand feel is fine, continue the remaining pages / change drag or reading chrome first / stop on this page. Do not generate remaining spreads' 3D in the same turn.
+4. **Narration fallback.** As soon as they chose voiced narration and this environment has no speech model, or audio generation fails: ask browser voice, labeled as such / silent this page / wait for files. Do not silently switch to browser speech or omit the label.
+5. **Gate 5 — chapter complete.** After chapter QA: keep this chapter as it is / open the next (name the region or legend). Do not start the next chapter in the same turn.
 
 ## Production Workflow
 
@@ -106,7 +116,7 @@ A new-book round must cover, in this order, every item the brief left open:
 5. **Narration** — recorded or browser-voiced passages, or silent turning.
 6. **Point of view and audience** only when they would change the prose.
 
-Do not ask whether the creator wants to review composition boards. They always do. Do not ask which renderer to use.
+Do not ask whether the creator wants to review composition boards. They always do. Do not ask which renderer to use. Later stops (board, first 3D, missing voice, next chapter) are one-question halts, not a second questionnaire.
 
 Confirm source story/adaptation rights. Avoid verbatim copying of protected translations or publisher-specific illustrations without authorization. Mark adaptations as adaptations.
 
@@ -189,8 +199,11 @@ and `crossGutter: true` only when the board item explicitly permits it.
 
 ### 6. Implement the Book
 
-Pass Gate 3 only after the board and 2D reconstruction gates pass. Then run Gate 4 after each changed
-spread/state. If page-turn or shared renderer code changes, schedule Gate 6.
+Pass the mechanical checks of Gate 3 only after the board and 2D reconstruction gates pass. Then **halt
+for the creator**: publish or preview the first playable spread, hand the Work over, ask whether to
+continue remaining pages, change drag or chrome, or stop here. Do not generate the remaining spreads'
+3D in that turn. After they confirm, run Gate 4 after each changed spread/state. If page-turn or
+shared renderer code changes, schedule Gate 6.
 
 Use `references/engineering.md` and `references/runtime-contract.md`. Keep chapter identity, spread
 identity, board identity, passage identity, scene ownership and audio identity separate. Inserted spreads
@@ -209,6 +222,11 @@ reading and restored bookmarks must produce the same state.
 
 ### 7. Reading and Audio
 
+If Step 1 chose voiced narration, inspect current `generate` speech models before attaching audio.
+When no speech model is available, or a narration file fails to generate, **halt**: browser voice,
+labeled in the UI / silent this page / wait for files. Do not silently switch. A labeled browser
+fallback is allowed only after they pick it.
+
 Run the audio and persistence portions of QA Gate 5 as soon as the first narrated multipassage spread works; repeat at chapter completion.
 
 Show all current-spread passages in a bounded reading region. Highlight the actually playing passage; do not fake word-level alignment without timestamps.
@@ -219,7 +237,8 @@ Keep explicit audio paths on passages. Reuse unchanged recordings after splittin
 
 ### 8. Verify and Deliver
 
-Complete Gate 5 for every changed chapter and Gate 6 at publication scope. Run the data validator, then actual browser QA. Data validation is not visual QA. Do not rerun only the final list while skipping the earlier asset and representative-spread gates.
+Complete Gate 5 for every changed chapter. **Halt before the next chapter**: keep this chapter / open
+the next, naming the region or legend. Then run Gate 6 at publication scope. Run the data validator, then actual browser QA. Data validation is not visual QA. Do not rerun only the final list while skipping the earlier asset and representative-spread gates.
 
 - Click actual UI arrows forward/back through every changed spread and chapter boundary; test rapid clicks, directory jumps, bookends, and old bookmarks.
 - Play real audio: multiple passages on one spread, end-to-turn, pause/resume, manual cancellation, errors, replay and final stop.

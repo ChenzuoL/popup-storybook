@@ -7,7 +7,7 @@ A chapter holds multiple spreads. A spread is an open left/right page pair. Prin
 ## What it covers
 
 - **World reconnaissance first**: inventory this world's characters, locations and events, bind every chapter to them, and take character and location covers as identity references.
-- **Page-first composition**: approve a full-spread composition board, decompose it into board regions, produce/crop assets without moving those regions, reconstruct in 2D, then map into Three.js.
+- **Page-first composition**: the creator approves a full-spread composition board, then decompose it into board regions, produce/crop assets without moving those regions, reconstruct in 2D, then map into Three.js.
 - **Versioned book contract**: schema v3 for new page-first books, with schema v2/v1 compatibility for existing books.
 - **Neutral page-turn state starter**: ordered spread navigation, forward/backward page ownership, input lock and deterministic turn seeking without story-specific Three.js geometry.
 - **Scene composition contract**: ground-only page surfaces plus explicit background, midground and foreground standees, with documented sparse-scene exceptions.
@@ -16,6 +16,7 @@ A chapter holds multiple spreads. A spread is an open left/right page pair. Prin
 - **Runtime QA contract**: adjacent turns in both directions, backward texture ownership, synchronized mechanisms, endpoint continuity and sampled collision checks.
 - **Page-depth QA**: paper-only comparison renders that catch page-block/spine occlusion and unsafe slope-based polygon offsets.
 - **Reading and audio**: bounded prose, ended-event advancement, manual cancellation, silent bookmark restore and versioned persistence.
+- **Creator halt points**: one questionnaire at Step 1; then one-question stops at the composition board, the first playable 3D spread, a missing-voice fallback, and the end of a chapter.
 - **Incremental gates**: baseline, storyboard, assets, representative spread, changed state, chapter, page depth and full-book regression.
 
 ## Layout

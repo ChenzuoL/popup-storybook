@@ -92,7 +92,7 @@ For rear support visibility, use low-contrast semi-transparent paper tone (e.g.,
 
 The minimal template is intentionally small. Extend assets with `sourceUrl`, `sourceImageSize`, `cropRect`, `alphaBounds`, `role`, `identityReference`, `maxWorldWidth`, `maxWorldHeight` and licensing/provenance notes when production needs them. Never place tokens in manifests.
 
-For audio, store model/voice reference provenance plus a text hash and verified duration. Changes to punctuation/text may require new audio. A decodable file does not prove pronunciation, emotion, or faithful words: audit listening separately. Do not silently replace an expressive childlike requested voice with pitched-up browser speech.
+For audio, store model/voice reference provenance plus a text hash and verified duration. Changes to punctuation/text may require new audio. A decodable file does not prove pronunciation, emotion, or faithful words: audit listening separately. Do not silently replace an expressive childlike requested voice with pitched-up browser speech. If the creator asked for voiced narration and this environment has no speech model, halt (Gate 3a) instead of shipping unlabeled browser speech.
 
 ## Portability Checklist
 
