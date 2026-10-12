@@ -2,7 +2,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { deriveBoardPlacement } from '../templates/runtime/board-to-book.mjs';
+import { deriveSpreadPlacements, depthProblems } from '../templates/runtime/board-to-book.mjs';
 
 function args(argv) {
   const out = {};
@@ -59,6 +59,14 @@ const seen = new Set();
 const layers = { background: '#5d7f9c', midground: '#b17b43', foreground: '#9a5364' };
 const markup = [];
 if (boardFile) await readFile(boardFile);
+const mapperOptions = { depthWindows: book.boardToBook?.depthWindows, minGap: book.boardToBook?.minDepthGap };
+const derivedById = new Map();
+try {
+  const withOcclusion = { ...spread, boardItems: (spread.boardItems || []).map(item => ({ ...item, occludes: item.occludes ?? item.measured?.occludes })) };
+  for (const placement of deriveSpreadPlacements(withOcclusion, mapperOptions)) derivedById.set(placement.boardItemId, placement);
+} catch (error) { errors.push(`${spread.id}: ${error.message}`); }
+const occludesById = new Map((spread.boardItems || []).map(item => [item.id, item.occludes ?? item.measured?.occludes]));
+for (const problem of depthProblems((spread.scene || []).map(s => ({ ...s, id: s.boardItemId, occludes: occludesById.get(s.boardItemId) })), mapperOptions)) errors.push(`${spread.id}: ${problem}`);
 if (boardFile) markup.push(`<image href="${safeHref(boardFile, outputDir)}" x="0" y="0" width="${width}" height="${height}" opacity="0.20" preserveAspectRatio="none"/>`);
 for (const item of spread.boardItems || []) {
   if (seen.has(item.id)) errors.push(`${spread.id}: duplicate boardItemId ${item.id}`);
@@ -74,9 +82,10 @@ for (const item of spread.boardItems || []) {
   if (scene.assetId !== item.assetId) errors.push(`${spread.id} boardItem ${item.id}: scene assetId ${scene.assetId} differs from board assetId ${item.assetId}`);
   if (scene.placementSource !== 'board') errors.push(`${spread.id} scene ${scene.id}: placementSource must be board`);
   try {
-    const derived = deriveBoardPlacement(item, board, { depthBands: book.boardToBook?.depthBands });
+    const derived = derivedById.get(item.id);
+    if (!derived) throw new Error('no derived placement');
     const close = (a, b) => Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= 0.0005;
-    if (!Array.isArray(scene.anchor) || !close(scene.anchor[0], derived.anchor[0]) || !close(scene.anchor[1], derived.anchor[1])) errors.push(`${spread.id} scene ${scene.id}: anchor is not derived from boardRect`);
+    if (!Array.isArray(scene.anchor) || !close(scene.anchor[0], derived.anchor[0]) || !close(scene.anchor[1], derived.anchor[1])) errors.push(`${spread.id} scene ${scene.id}: anchor ${JSON.stringify(scene.anchor)} is not derived from boardRect/depth rule ${JSON.stringify(derived.anchor)} — run scripts/place-scene.mjs`);
     if (!close(scene.maxWidth, derived.maxWidth) || !close(scene.maxHeight, derived.maxHeight)) errors.push(`${spread.id} scene ${scene.id}: dimensions are not derived from boardRect`);
     if (scene.side !== derived.side || scene.coordinateSpace !== derived.coordinateSpace) errors.push(`${spread.id} scene ${scene.id}: side/coordinateSpace do not match board mapping`);
   } catch (error) { errors.push(`${spread.id} scene ${scene.id}: ${error.message}`); }
@@ -87,7 +96,7 @@ for (const item of spread.boardItems || []) {
   const color = layers[item.layer] || '#777';
   markup.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${color}" fill-opacity="0.06" stroke="${color}" stroke-width="3"/>`);
   if (assetFile) markup.push(`<image href="${safeHref(assetFile, outputDir)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMax meet"/>`);
-  markup.push(`<text x="${x + 8}" y="${Math.max(18, y + 20)}" fill="${color}" font-family="sans-serif" font-size="16">${esc(item.id)} · ${esc(item.layer)} · ${esc(item.cutMode)}</text>`);
+  markup.push(`<text x="${x + 8}" y="${Math.max(18, y + 20)}" fill="${color}" font-family="sans-serif" font-size="16">${esc(item.id)} · ${esc(item.layer)} · z ${esc(scene.anchor?.[1])} · ${esc(item.cutMode)}</text>`);
 }
 for (const scene of spread.scene || []) if (!seen.has(scene.boardItemId)) errors.push(`${spread.id} scene ${scene.id}: boardItemId ${scene.boardItemId || '(missing)'} has no board item`);
 if (spread.reconstruction?.sourceBoard && spread.reconstruction.sourceBoard !== board.file) warnings.push(`${spread.id}: reconstruction.sourceBoard differs from compositionBoard.file`);

@@ -7,11 +7,14 @@ const scripts = [
   'test-validator-v3.cjs',
   'test-world-survey.cjs',
   'test-board-to-book.mjs',
+  'test-isolate-prompts.mjs',
   'test-reconstruct-board.cjs',
   'test-scaffold.cjs',
   'test-page-turn-state.mjs',
   'test-runtime-contract.cjs',
-  'test-depth-report.cjs'
+  'test-depth-report.cjs',
+  'test-runtime-motion.cjs',
+  'test-duplicate-spread.cjs'
 ];
 for (const script of scripts) {
   const result = spawnSync(process.execPath, [path.join(__dirname, script)], { stdio: 'inherit' });

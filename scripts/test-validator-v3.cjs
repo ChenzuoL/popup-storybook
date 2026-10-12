@@ -31,4 +31,14 @@ assert(errors(book => book.spreads[0].boardItems[0].reason = 'manual review', fa
 assert(errors(book => {
   book.spreads[0].boardItems.push({ ...book.spreads[0].boardItems[0], id: 'duplicate-board-item' });
 }, true).some(error => error.includes('boardItem')));
-console.log('PASS v3 board-first template draft/production and 13 negative contract cases');
+assert(errors(book => { book.spreads[0].scene[2].anchor[1] = book.spreads[0].scene[1].anchor[1]; }, false).some(error => error.includes('share depth')), 'shared depth must fail even in draft');
+assert(errors(book => { book.spreads[0].scene[0].anchor[1] = 0.9; }, false).some(error => error.includes('must stand behind')), 'layer order inversion must fail');
+assert(errors(() => {}).some(error => error.includes('template default')), 'production must reject the template theme');
+assert(errors(book => { book.theme.derivedFrom = ''; }).some(error => error.includes('derivedFrom')));
+assert(errors(book => { delete book.spreads[0].boardItems[1].subject; }, false).some(error => error.includes('needs subject')));
+assert(errors(book => { book.spreads[0].compositionBoard.url = 'board.png'; }).some(error => error.includes('compositionBoard.url')));
+assert(errors(book => { book.theme.chrome = 'popup-gate'; }, false).some(error => error.includes('theme.chrome')));
+assert(errors(book => { book.theme.book.background = 'beige'; }, false).some(error => error.includes('background must be #rrggbb')));
+assert(errors(book => { delete book.assets.find(a => a.id === 'cover-art').provenance.recipe; }).some(error => error.includes('book-cover')), 'production must require a dedicated cover');
+assert(errors(book => { book.covers.titlePlacement = 'middle'; }, false).some(error => error.includes('titlePlacement')));
+console.log('PASS v3 board-first template draft/production and 23 negative contract cases (incl. unique depth, world theme and dedicated cover)');

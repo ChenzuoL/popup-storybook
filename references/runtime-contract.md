@@ -7,17 +7,19 @@ A production renderer may choose its own Three.js architecture, but it must expo
 ```js
 current() // { spreadId, chapterId, index, count, phase, turning, ready }
 turn(direction) // locks input until a settled state
-seekTurn(progress) // freeze the active turn at normalized [0,1] for QA only
+seekTurn(progress) // freeze an active page turn at normalized [0,1] for QA only
+seekOpen(progress) // freeze the cover-opening mechanism at normalized [0,1] for QA only
+mechanismAudit() // cover angle, left-half scale, floating standees, current orbit
 settled() // true only after attachments have returned to page-owned parents
 open(targetIndex) // open from closed state to a specific spread, preparing textures before animation
 close() // close from current spread to closed state, cancel narration, restore gate overlay
 ```
 
-`seekTurn` is a test hook. It must not change the reader's settled bookmark or call audio/page completion handlers.
+`seekTurn` and `seekOpen` are test hooks. They must not change the reader's settled bookmark or call audio/page completion handlers. `seekOpen` exists specifically to catch drawer-like openings: `mechanismAudit().leftStack.scaleX` stays exactly 1 at every sampled progress.
 
-`open(targetIndex)` must prepare the destination spread's textures (both pages) before starting the binding animation, so the book opens directly to the bookmarked spread without flashing through the first page.
+`open(targetIndex)` must prepare the destination spread's textures (both pages) before starting the animation, so the book opens directly to the bookmarked spread without flashing through the first page. One hinge (left page block + its board, which is the front cover when closed, + the left page) turns `-π → 0` about the spine, up and over; nothing scales or slides. The whole scene rises on one curve driven by the hinge angle — no per-piece delay and no settle batch; left-page standees turn with the left page; gutter-spanning standees are split at the gutter into two halves, one per page.
 
-`close()` must animate the binding frame from the current open angle back to closed (vertical), hide the turning leaf, cancel any active narration, and restore the gate overlay with bookmark-aware messaging. The cover art remains visible throughout closure. After reaching the closed state, persist the current spread index as a bookmark.
+`close()` is that opening reversed on the same curve: the hinge turns back to `-π` and every standee lies down with it. It hides the turning leaf, cancels narration, restores the gate and persists the bookmark, and must end in exactly the initial closed state (hinge `-π`, scene hidden).
 
 ## Required ownership
 
@@ -56,12 +58,16 @@ The renderer should expose:
 ```js
 window.__neta = {
   state,
+  seekOpen,
   seekTurn,
+  mechanismAudit,
   collisions,
   standeeStates,
   pageSurfaceAudit
 }
 ```
+
+`mechanismAudit()` must report `{ model, phase, hingeRotationZ, coverRotationZ, leftStackScaleX, floatingStandees, orbit: { yaw, pitch } }` (`leftStackScaleX` is always 1: a value below 1 means the drawer fan-out is back). Production requires `floatingStandees: 0` at every opening and closing sample: a raised standee must be in its own page's frame (left-page standees at the hinge angle, right-page standees at rest).
 
 `pageSurfaceAudit()` should report static-surface visibility, moving-leaf visibility, render order/depth settings and current low/high ownership. A page-depth test must compare the printed page pixels with and without the page blocks/boards at several camera angles; a nonblank canvas check is not sufficient.
 

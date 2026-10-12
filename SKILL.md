@@ -1,258 +1,243 @@
 ---
 name: popup-storybook
-description: "Build or refine a browser-based 3D paper pop-up storybook with real page turns, chapter-to-spread storyboarding, independent silhouette standees, illustrated page surfaces, and optional synchronized narration. Triggers: 立体书, 纸雕绘本, 翻页关键帧, pop-up book, paper storybook. Not a branching adventure, static PDF, or manufacturing-ready paper engineering plan."
+description: "Build or refine a browser-based 3D paper pop-up storybook: one questionnaire for style and chapter count, one composition master per spread, every standee cut out of its master in place with qwen-image-2.1, each standee on its own depth, assembled into a world-themed Three.js book with real page turns. Triggers: 立体书, 纸雕绘本, 翻页立体书, pop-up book, paper storybook. Not a branching adventure, static PDF, or manufacturing-ready paper engineering plan."
 ---
 
 # Pop-Up Storybook
 
-Create an actual readable Three.js book, not a slideshow inside a book-shaped frame. This skill includes a production workflow, board-first contract, Three.js runtime source and QA tools. The scaffold contains draft placeholders; replace and verify assets before delivering a book. It contains no licensed story assets.
+Make an actual readable Three.js book — hardcover boards, page blocks, a curling leaf, paper standees
+that rise off the page — dressed for the world it comes from. The pipeline is:
 
-Resolve paths below relative to this SKILL.md. Read `references/world-recon.md`, `references/board-first.md`, `references/engineering.md`, `references/runtime-contract.md`, `references/asset-pipeline.md`, `references/expansion-and-release.md` and `references/qa-gates.md` before implementation. Use `templates/book-v3.json` for new page-first production books; use `templates/book-v2.json` for existing v2 books and `templates/book.json` only for legacy schema v1 compatibility. Run the matching validator and board reconstruction against actual book data. After changing the skill, run the complete self-test with `node scripts/test-skill.cjs`.
+```text
+world recon → ONE questionnaire (style, chapters, spreads, story, chrome, narration)
+→ storyboard → one composition master per spread → ONE board halt
+→ qwen-image-2.1 in-place cut-outs → matte + measure → unique-depth placement → 2D proof
+→ world theme → assemble the book → headless QA shots → publish
+```
 
-## Reuse Boundary
+Resolve paths below relative to this SKILL.md. Before building, read `references/questionnaire.md`,
+`references/composition-masters.md`, `references/qwen-cutout.md`, `references/depth-and-placement.md`,
+`references/book-cover.md`,
+`references/theming.md` and `references/engineering.md`; consult `world-recon.md`, `asset-pipeline.md`,
+`runtime-contract.md`, `qa-gates.md` and `expansion-and-release.md` when their step comes up. After
+changing this skill, run `node scripts/test-skill.cjs`.
 
-This skill applies to fiction, nonfiction, education, exhibition catalogues and other linear illustrated books. Its reusable contract is **ordered spreads + page surfaces + page-owned attachments + passages + optional audio**, not a particular story, art style, language, page count, or numeric id scheme.
+## Routing
 
-Use a simpler web page when no physical book or page-turn behavior is required. Use a branching narrative/game skill when choices change the path. This skill creates a visually simulated paper book, not printable dielines, structural load calculations, or manufacturing instructions. Three.js is the default for a new browser implementation; an existing capable renderer may be retained instead of rewritten.
+- Studio web creation, editing and publishing go through `create-web-work`. Updating an existing book
+  never creates a new Work.
+- Load `generate` before making masters, page grounds, covers or narration audio; read the current
+  model declarations rather than assuming parameters.
+- The questionnaire call goes through `questionnaire` (this skill fixes what to ask; that skill fixes
+  how). Hand-overs go through `interaction-components`; the closing through `next-steps`.
+- Set `visualStyle` before creating materials that need covers. Never write the book's printed medium
+  into `worldConfig.visualStyle`.
+- This local skill must be copied (whole folder) and registered in another world's AGENTS.md before
+  it exists there.
 
-## Routing and Prerequisites
+## Creator halts — exactly two
 
-- For Studio web creation, editing, or publishing, load `create-web-work` and follow its lifecycle. Do not create a new Work when updating an existing book.
-- Load `generate` before making images or audio; inspect current model declarations. Never assume an old model or voice parameter remains available.
-- Use the applicable asset-sheet skill for reference-guided deterministic sheets. Use background removal only when source alpha is unsuitable; inspect before and after.
-- Read this world before designing anything in it: run Step 0 world reconnaissance. Preserve original demos and unrelated content. Set visualStyle before creating materials requiring covers.
-- Publish through the supported CLI. Do not hand-edit deployment metadata or embed credentials in browser code.
-- This local skill must be installed in another world before it is discoverable there; copy its entire folder, register it in that world's AGENTS.md, and resolve relative paths from that copied SKILL.md. Do not claim account-wide installation.
+1. **Step 1 questionnaire** — style, chapters, spreads per chapter, story, reading chrome, narration.
+   Skip only when the brief already names all of them; one missing item is a chat question.
+2. **Board halt** — all composition masters of this run handed over together; one question:
+   approve and build / redraw named spreads / change direction. Stop the turn.
+
+Everything after board approval — cutting, matting, depth, proof, theme, assembly, QA, publish —
+runs in one go. Problems found on the way (a drifted cut, a clipped strut, a failed shot) are repaired
+inside the run, not turned into new questions. The only extra stop is a hard block (no credits, a
+model gone, a narration file that cannot be produced after the creator chose recorded voice).
+
+## Production workflow
+
+### 0. World reconnaissance
+
+`node scripts/world-survey.cjs --world=<world root>`: atom types, every character/location/event with
+cover status, existing works, `populated` / `sparse` / `empty`. Bind chapters to real atoms in
+`book.worldBinding`; take each character's and location's **cover URL** as its identity reference
+(`boardItem.identityRef`). Empty world: the book authors the atoms and writes them back
+(`world-recon.md`). Also check speech models (`cohub models ls --model-type multimodal`) so the
+narration question only offers what exists.
+
+### 1. The questionnaire
+
+One round, most important first (`references/questionnaire.md` has the full spec and an example):
+
+1. **风格** — tiles: the world's own style first, then 3–5 paper-friendly style-library styles with
+   their (inspected) thumbnails;
+2. **做多少章** — cards grounded in the world's events;
+3. **每章几个跨页**;
+4. **讲哪段故事** — the world's real events by name (skip if the brief named it);
+5. **阅读界面** — paper sidebar / text band under the book / almost none;
+6. **朗读** — only the options available now.
+
+No image before the round returns. Carry answers into `book.style`, storyboard size,
+`worldBinding`, `theme.chrome` and `narration.mode`.
+
+### 2. Storyboard
+
+A table: chapter, stable spread id (`chapter-02-spread-03`), title, key beat, passages, cast on the
+spread, backdrop / midground / foreground, page ground, reason to turn. Spread count follows the beats
+and the Step 1 answer. Keep causal order; never bring later characters or reveals forward.
+Passages are original adaptations; mark them as such.
+
+### 3. Composition masters — then the board halt
+
+Generate **one master per spread in this run's scope**, in parallel, as image Works, using the staging
+recipe in `composition-masters.md` (pop-up diorama from the front, everything standing on a visible
+floor line, air between pieces, three depth bands, a plain floor band, no text) plus the printed
+medium and the cast's atom covers as references. Record each as `spread.compositionBoard` with
+`url`, local `file`, `canvas`, `status: "review"`.
+
+Hand all masters over at once and ask the one board question. Stop. On approval set
+`status: "approved"`; on "redraw spread N" regenerate only those and ask again. Agent inspection is
+never approval; nothing is cut from a `review` master.
+
+### 4. Cut every standee out of its master — qwen-image-2.1, in place
+
+For each master write `boardItems`: one per deliberate element (`composition-masters.md`), each with
+`subject` (what the master shows, in English), `label` (short name), a rough `hint` box, `cutMode`
+(`isolate` / `isolate-key` / `curtain`), `identityRef`, layer and page side. Read hint boxes off a
+grid: `python3 scripts/lib/hint_mask.py <board> 0,0,0,0 grid.png --grid`.
+
+```bash
+node scripts/qwen-isolate.mjs --book=data/book.json --spread=<id>      # async + poll, retries, log
+python3 scripts/matte.py      --book=data/book.json --spread=<id>      # alpha, boardRect, QA sheets
+```
+
+`qwen-isolate` paints everything outside the hint white, names the overlapping neighbours for removal
+and asks qwen to keep the one element **at its exact position and size**; isolates go through BiRefNet
+(`isolate`) or a white key (`isolate-key`); curtains stay opaque. `matte.py` measures each
+`boardRect` from the isolate itself, writes cutouts/masks/alpha bounds into the manifest and renders
+`docs/qa/<spread>-standees.png` (light/dark paper) and `<spread>-recompose.png` (master beside the
+cutouts pasted back). **Open both.** Re-cut drifted or contaminated items with
+`--items=<id> --identity --force`; never accept a drifted cut, never move an element to hide a bad one.
+Full recipe and failure handling: `references/qwen-cutout.md`.
+
+Page grounds (ground-only) are generated separately in the book's medium, with the master as a style
+reference.
+
+### 4b. Generate the book cover
+
+The cover is its own picture, never a crop of a spread master. Generate it once per book after the
+masters are approved: page aspect (`1024x1152` for the default page), one master as style/cast
+reference, the book's single most iconic image, **the top third kept calm for the title**, and no
+lettering in the art. The runtime sets the title (`covers.title`, default `book.title`) on the cover in
+the theme's display face. Record the asset with `provenance.recipe: "book-cover"`. Recipe and checks:
+`references/book-cover.md`.
+
+### 5. Every standee on its own z
+
+```bash
+node scripts/place-scene.mjs --book=data/book.json
+node scripts/reconstruct-board.mjs --book=data/book.json --root=. --spread=<id> --out=docs/qa/<id>-reconstruction.svg
+```
+
+`place-scene` derives every `scene[]` item from its board item: x and size from `boardRect`, and a
+**unique depth** — layers back to front (background < midground < foreground windows), inside a layer
+ordered by the board baseline (y + height), at least `minDepthGap` apart. Shared depth is how props
+cut through each other; the validator, the reconstruction and the mapper all reject it. A deliberate
+correction goes on `boardItem.depth` (recorded), never on `scene[].anchor`. The renderer also stops
+each rear strut short of the standee behind it and stacks folded cards by rank
+(`references/depth-and-placement.md`). Approve the reconstruction (structural pass + your visual
+comparison with the recomposition) before 3D.
+
+### 6. Dress the book from its world
+
+`python3 scripts/palette.py assets/boards/*.png` proposes the palette from the approved art. Combine it
+with the world's genre, era, tone and signature materials into `book.theme`: palette, typography,
+chrome (Step 1 answer), reader surface, bar style, labels, and the two colours the book object takes
+(board cloth, canvas background). Record `theme.derivedFrom`. Production rejects the template palette.
+Spec and rules: `references/theming.md`.
+
+### 7. Assemble the book
+
+`node scripts/scaffold.mjs <book-root>` for a new book (runtime, vendor Three.js, v3 manifest). The
+runtime reads everything from `data/book.json`:
+
+- **book object**: the original popup-storybook model — hardcover boards, two page blocks, a curling
+  page-turn leaf, original materials, light and camera — opened by **one hinge** (front cover + left
+  half of the block turn together up and over the spine; nothing fans out or slides). The closed book
+  is drawn at once and textures bind behind it (`references/engineering.md` → Book Object);
+- **paper standees**: printed front, plain paper back, rear prop, crease, contact shadow, folding and
+  rising with the paper — each on its own depth, **the whole scene on one curve driven by the page
+  angle** (no batches, no stagger); left-page pieces are glued to the left page and turn with it;
+- **chrome**: a bottom bar in its own row under the canvas — before opening it is the gate (title +
+  open button), after opening it is the navigation (prev / next / contents / narration / sound /
+  close). Nothing overlays the book. Reader as sidebar, footer band or margin, per theme.
+
+Interaction contract: one arrow click = one spread; repeated clicks during a turn are ignored;
+multi-spread turning is tested before release (a single-spread book can't prove it — duplicate the
+first spread as labelled test copies if the brief has only one; see `references/qa-gates.md`);
+close-book animates back from any spread and keeps the bookmark; reopening goes straight to the
+bookmarked spread; close is the original opening reversed and ends in the exact initial closed state;
+drag is grab-the-object (yaw ±2.55 rad to walk round the back, pitch above the book), scroll-up zooms in.
+Gutter-spanning pieces are cut at the gutter into two halves, each glued to its own page. No on-book
+arrows or click-to-turn standees.
+Narration: real files advance on `ended`, browser voice only when chosen and labelled, manual
+navigation cancels audio.
+
+### 8. Verify and deliver
+
+```bash
+python3 scripts/pack-assets.py --book=data/book.json --root=.   # WebP standees, JPEG page art/cover, start-up budget
+node scripts/validate-book-v3.cjs data/book.json --production --root=.
+node scripts/audit-assets.cjs data/book.json --production --root=.
+node scripts/shoot.mjs --root=. --spread=0          # closed, reclosed, closedSide/Low/Back(+J), opening10…95, profile20…80, closing30/60, front, oblique, low, back, mid-turn, mobile
+node scripts/shoot.mjs --root=. --spread=0 --views=turn20,turn50,turn80,turnBack50   # multi-spread turning, both directions
+python3 scripts/flicker-check.py docs/qa/shots/closedSide.png docs/qa/shots/closedSideJ.png   # and closedLow/closedLowJ
+```
+
+A book with a single spread cannot prove page turning. Before the turn shots, add labelled test copies
+of spread 1 — no new assets, unique ids, the third copy in a new chapter so chapter switching is
+exercised — and remove them before the final release unless the creator wants to keep them:
+
+```bash
+node scripts/duplicate-spread.mjs --book=data/book.json --copies=2 --new-chapter-from=3
+node scripts/duplicate-spread.mjs --book=data/book.json --remove
+```
+
+`shoot.mjs` drives the runtime's `#qa=` entry in headless Chrome and writes PNGs plus `report.json`
+(failed assets, depth audit, sampled collisions, opening mechanism and console errors). **Look at every
+shot**, and read the opening **as a sequence**: the bar does not cover the book; no piece stands on
+paper that is not there yet; the whole scene rises **together with the paper, never in batches**
+(left-page pieces turning with their page, gutter pieces split at the gutter) and keeps depth
+separation; `closing30/60` lie down the same way; nothing cuts through
+(zero sampled collisions); `reclosed` matches `closed`; mobile reads.
+Repeat for each spread you changed. Then the remaining gates in `qa-gates.md` at the scope you changed
+(adjacent turns both directions, endpoints, page depth, bookmarks).
+
+Publish through `create-web-work`, then verify the **published** build, not the local copy:
+
+```bash
+node scripts/probe-live.mjs --url=https://neta.art/w/<owner>/<world>/<work>
+```
+
+It reads the Work iframe's real CDN URL from the Studio page and reruns the runtime probes there
+(settled desktop/mobile + frozen opening frames). Hand the Work over only when it passes; then hand it over with
+`interaction-components`, then close with `next-steps` (the next chapter by name leads).
 
 ## Versioned contracts
 
-- **Schema v3 is the production contract for new page-first books.** It requires the v2 world binding and scene contract plus one approved `compositionBoard`, explicit `boardItems`, board-linked scene placements, a passing `reconstruction` proof and a `boardToBook` depth profile.
-- **Schema v2 remains readable for existing Works** and is the legacy asset-first contract. Do not silently rewrite old ids or manifests; migrate deliberately.
-- **Schema v1 remains readable for legacy Works** but is not the target for new production.
-- New renderers expose the runtime surface in `references/runtime-contract.md`: deterministic `seekTurn`, ownership snapshots, page-surface audits and collision samples. Start from `templates/runtime/page-turn-state.mjs`, `templates/runtime/board-to-book.mjs` or run `node scripts/scaffold.mjs <book-root>`; the starter owns state/placement derivation, leaving Three.js materials and story content to the Work.
+- **Schema v3** is the production contract: world binding, scene contract, one approved
+  `compositionBoard` per spread with `url`, `boardItems` with cut fields, board-derived scene with
+  unique depth, a passing reconstruction, `theme`, optional `narration`.
+- Schema v2 (asset-first) and v1 remain readable for existing Works; migrate deliberately, never
+  silently rename ids. `boardToBook.depthBands` is legacy (shared bands); new books use
+  `depthWindows` + `minDepthGap`.
 
-## Defaults
+## Defaults the creator can override
 
-User preferences override these defaults. Existing application contracts take priority over a new architecture.
+- A chapter holds several spreads; a spread is one open left/right pair.
+- Narration-led editions keep prose out of printed art; chapter labels and passages live in the
+  reader. Printed text on pages only when the creator asks and legibility is designed.
+- Page art is ground only. Characters, buildings, trees, vehicles and important props are standees.
+- Every normal spread has backdrop, midground and foreground; a deliberately sparse spread sets
+  `scenePolicy.sparseIntent` with a reason.
+- Opening/closing paper mechanics are the motion; character animation only when the brief asks.
 
-- A chapter contains multiple spreads. A spread is an open left/right page pair; it counts as two interior pages.
-- One UI right-arrow click turns exactly one spread; left reverses one spread. Ignore further turn requests during a turn.
-- Provide a close-book control that animates the binding frame back to the closed state from any spread, cancels active narration, and persists the current bookmark. On reopening, prepare the bookmarked spread's textures before animation starts to avoid flashing through the first page.
-- No on-book arrows, floating triangular corners, or click-to-turn standees. Canvas drag is **grab-the-object**: the point under the pointer follows the pointer (the inverse of a camera-slide). Yaw must be wide enough to walk around to the back of the book; pitch stays above the table, from almost top-down to almost table-level; the wheel zooms with conventional scroll-up-in. Keep auto narration separate from manual navigation.
-- One spread contains one key scene and one or several speaker-attributed passages. Never force a page turn after every sentence.
-- For narration-led editions, keep prose out of printed page artwork and put chapter labels, narration and dialogue in the reading UI. For educational, facsimile or user-requested text-on-page editions, printed text is allowed only when legibility, gutter safety, localization and accessibility are explicitly designed and tested.
-- Printed page art supplies ground, paths, rugs, soil, and low detail. Independent transparent standees supply characters, vegetation and important props.
-- A production spread normally has all three depth layers: a background curtain or distant silhouette, one or more midground subjects/architecture, and a low foreground prop. A deliberately sparse spread must declare `scenePolicy.sparseIntent` and a reason.
-- New spreads are page-first: the **creator** approves one composition board, then the agent decomposes it into board regions, produce/crop assets without changing those regions, pass 2D reconstruction, then map into the 3D book. Agent inspection is not creator approval. The board is never silently replaced by hand-tuned anchors.
-- Opening and closing paper mechanisms are the default motion. Add independent character/object animation only when the brief calls for it and it does not undermine the paper construction; test it as a separate state system.
-- Preserve plain paper backs, fine contour-edge shading, rear supports, folds, and restrained contact shadows. Do not add exposed front feet.
-- Treat page blocks and static paper surfaces as separate depth surfaces. Never use a broad slope-based polygon offset to push printed pages behind page blocks; verify oblique views with the page-depth gate.
-- Reading UI never covers the book canvas. Inspection mode may collapse prose but must retain playback and a visible way back. The chrome of that UI (paper sidebar, catalogue, or almost none) is a creator choice asked at Step 1, not an implementation leftover.
+## Reference implementation
 
-## QA Cadence
-
-Load `references/qa-gates.md` and treat its exit criteria as blocking checkpoints. Do not postpone all QA until delivery.
-
-1. Run world reconnaissance and bind the book to this world before storyboarding (Step 0, Gate 0b).
-2. Capture an existing-book baseline before edits.
-3. Run the storyboard/data gate before composition boards.
-4. Generate one representative composition board, hand it to the creator, and wait. Do not expand a visual pattern or produce standees until they approve it (Gate 2a).
-5. Annotate boardItems and run the decomposition contract before producing assets (Gate 2b).
-6. Run asset intake QA immediately after every crop, re-generation, sheet split or background-removal batch.
-7. Reconstruct the spread in 2D and block 3D work until the board proof passes (Gate 2c).
-8. Build one representative 3D spread, hand it to the creator, and wait. Do not multiply the renderer pattern until they confirm drag, chrome and paper mechanics (Gate 3).
-9. Run state, ownership and adjacent-turn QA after every changed spread; batch only truly mechanical equivalents.
-10. Run chapter QA, then ask the creator before starting the next chapter (Gate 5).
-11. Run page-depth QA whenever page blocks, surfaces, spine, camera or render order change.
-12. Run full regression after shared renderer/navigation/audio changes and before final publication.
-
-A failed gate stops downstream expansion until fixed or explicitly documented and accepted. Record unrun checks and limitations. Evidence becomes stale whenever the related layout, asset, audio or behavior changes.
-
-## Creator halt points
-
-The questionnaire skill is used **once**, at Step 1. Every later stop is one question in the creator's language, then the turn ends. Do not fold these into a second questionnaire.
-
-1. **Step 1 — direction.** World reconnaissance, then one questionnaire: story, scope, printed medium, reading chrome, narration, and POV/audience only if they change the prose. No image until it returns.
-2. **Gate 2a — composition board.** Representative board at `review`. Hand it over. Ask: keep this board and start cutting / redraw it / change these named things. Stop. Repeat for later boards unless they already said the approved pattern may roll forward.
-3. **Gate 3 — first playable 3D spread.** After the first spread can open, turn and be orbited: hand the Work over. Ask: hand feel is fine, continue the remaining pages / change drag or reading chrome first / stop on this page. Do not generate remaining spreads' 3D in the same turn.
-4. **Narration fallback.** As soon as they chose voiced narration and this environment has no speech model, or audio generation fails: ask browser voice, labeled as such / silent this page / wait for files. Do not silently switch to browser speech or omit the label.
-5. **Gate 5 — chapter complete.** After chapter QA: keep this chapter as it is / open the next (name the region or legend). Do not start the next chapter in the same turn.
-
-## Production Workflow
-
-### 0. World Reconnaissance
-
-Before the storyboard. Find out what this world already holds, then bind the book to it. Read
-`references/world-recon.md`.
-
-- Inventory the world with `node scripts/world-survey.cjs --world=/path/to/world`: the atom types
-  actually present, every character/location/event with its description and whether it has a ready
-  cover, the works already made from them, and a `populated` / `sparse` / `empty` verdict.
-- Bind each chapter to existing characters, locations and events in `book.worldBinding`. One driving
-  event per chapter unless two are deliberately merged.
-- Take each character's and each location's atom **cover** as its identity reference — a character
-  cover becomes a character standee, a location cover becomes a landmark standee — so a subject looks
-  the same on every spread and matches how this world already draws it. Resolve names against the
-  live world with `--binding=<data/book.json>`.
-- **Empty world — the direction reverses.** The book creates the world's materials instead of
-  consuming them: set `state: "empty"`, list every invented character/location/event in `authored`,
-  and write them back as atoms so this world grows and the next work inherits them.
-- Reconcile after any chapter, cast or event change, and re-run the binding check.
-- Reading `visualStyle` is not obeying it. A book may keep its own printed medium while the world
-  renders differently; record that as the book's own style and leave the world config alone.
-
-### 1. Establish Scope
-
-World reconnaissance first, then one questionnaire round, then any image. The round names real atoms this world already holds. Do not generate a composition board, a standee or a cover until the round has returned.
-
-For a clear brief that already names story, scope, printed medium, reading chrome and narration, skip the round. For a broad brief, use the questionnaire skill once. For one missing scope decision, ask one chat question and stop. Ask what should be made, not which library to use.
-
-A new-book round must cover, in this order, every item the brief left open:
-
-1. **Which story / which chapter** — options grounded in this world's characters, locations, events or legends.
-2. **How far this run** — one spread to nail the craft / one complete chapter / a multi-chapter book. Cards, not a slider.
-3. **Printed medium of this book** — follow the world's `visualStyle` / watercolor paper-cut / vintage print. Record the answer as the book's own style. Do not write it into `manifest.worldConfig.visualStyle`.
-4. **Reading chrome** — paper sidebar (warm stock, titles and passages beside the book) / catalogue (dark, entry-like) / almost none (arrows, close-book, nothing else). This is a creator choice, not a default the agent keeps.
-5. **Narration** — recorded or browser-voiced passages, or silent turning.
-6. **Point of view and audience** only when they would change the prose.
-
-Do not ask whether the creator wants to review composition boards. They always do. Do not ask which renderer to use. Later stops (board, first 3D, missing voice, next chapter) are one-question halts, not a second questionnaire.
-
-Confirm source story/adaptation rights. Avoid verbatim copying of protected translations or publisher-specific illustrations without authorization. Mark adaptations as adaptations.
-
-### 2. Storyboard Before Assets
-
-Prepare a table: chapter, stable spread id, title, key event, passage ids, flat page art, foreground/midground/background, dominant subject, required poses, assets missing, and narrative reason to turn.
-
-Keep causal order and key dialogue. Do not bring later characters or reveals forward for decoration. A revealing interior picture must not appear before the reveal. A symbolic scene and a literal scene need visibly different staging.
-
-Choose spread count from story beats, not a fixed pages-per-chapter quota. Distinguish 6 spreads from 6 individual pages. For a large book, approve one representative chapter before broad rollout; report exactly which chapters are complete. Follow `references/expansion-and-release.md` when adding chapters or publishing an existing Work.
-
-### 3. Generate and Approve the Composition Board
-
-For the representative spread first — not the whole book — generate one complete composition board
-from the storyboard and the bound world references. The board answers “what does this page look
-like?”: framing, relative scale, left/right placement, foreground crop, midground subjects, distant
-scenery and the intended visual path.
-
-Record it as `spread.compositionBoard` with a stable source Work, local file, canvas,
-`coordinateSpace: "full-spread"` and `status: "review"`. This is the spread's layout master. It is
-not `pageArt`, not the published background and not a license to flatten the whole scene into one
-texture. Page art remains a low-detail ground surface; characters, landmarks, trees and important
-props remain independent standees.
-
-**Halt for the creator.** Hand the board Work over with interaction-components. Ask once, in their
-language: keep this board and start cutting / redraw it / change these named things. Then stop the
-turn. Agent inspection of framing and identity is not approval. `status` stays `review` until the
-creator answers. Do not decompose, crop, regenerate standees, build 3D or publish in the same turn
-as an unapproved board.
-
-On confirmation, set `status: "approved"` and only then run Step 4. Remaining spreads: generate their
-boards and halt again, unless the creator already said the approved pattern may roll forward.
-
-Use a complete textured board for art direction when useful. If direct cutting is desired, generate or
-prepare a white cut-safe representation, but do not let a second image silently become a competing
-layout. The approved board and its recorded regions are authoritative.
-
-A model-generated board may add atmospheric elements; that is fine, but every deliberate addition
-must later be marked as an asset or explicitly recorded as excluded atmosphere.
-
-### 4. Decompose the Board and Produce Assets
-
-After board approval, the agent writes `spread.boardItems`. Each item has a stable id, `boardRect`
-in board pixels, material/atom reference, role, layer, page side, depth band and `cutMode` (`crop`,
-`regenerate` or documented `manual`). Every production `scene[]` item points back through
-`boardItemId` and uses `placementSource: "board"`.
-
-Run `scripts/audit-assets.cjs` after every asset batch. Use `cutMode: crop` only when the board region
-has a clean silhouette. If a character or landmark is stuck to scenery, paper texture or another
-asset, use `cutMode: regenerate` with both the atom cover and the composition board. Regeneration may
-repair pixels, resolution or alpha, but it may not change the approved `boardRect`, page side, layer,
-pose intent or scale relationship.
-
-Use the world's character and location covers as identity references. Keep page ground, horizontal
-steps and other ground surfaces in `pageArt`; use independent standees for vertical risers, railings,
-trees, buildings and foreground framing. Record source board, crop region, alpha bounds, masks, final
-size and provenance. A failed crop is an asset failure, not permission to redesign the composition.
-
-### 5. Reconstruct in 2D and Calibrate Placement
-
-Before Three.js, rebuild a 2D proof from the accepted assets and board regions:
-
-```bash
-node scripts/reconstruct-board.mjs \
-  --book=/path/to/data/book.json --root=/path/to \
-  --spread=chapter-01-spread-01 \
-  --out=/path/to/qa/chapter-01-spread-01-reconstruction.svg
-```
-
-The proof must have no missing or duplicate required items; every scene item must map to one board
-item; asset ids must agree; page side, layer and intended overlap must be explicit; and the relative
-position, scale and framing of the approved board must survive. Direct crops can be pixel-compared;
-regenerated assets are checked by region, silhouette, identity and scale rather than exact pixels.
-
-A failed 2D proof blocks 3D work. Do not fix it by hand-editing anchors. Repair the board annotation,
-the asset branch or the source board. Then use `templates/runtime/board-to-book.mjs` to derive x,
-size, page side and the declared depth band. Board y is not raw Three.js z: use `boardToBook.depthBands`
-and a fixed canonical camera profile. The mapper is an initial placement: verify projected bounds and occlusion against the board, and record any physical calibration adjustments. Wide background curtains may use `coordinateSpace: "spread"`
-and `crossGutter: true` only when the board item explicitly permits it.
-
-### 6. Implement the Book
-
-Pass the mechanical checks of Gate 3 only after the board and 2D reconstruction gates pass. Then **halt
-for the creator**: publish or preview the first playable spread, hand the Work over, ask whether to
-continue remaining pages, change drag or chrome, or stop here. Do not generate the remaining spreads'
-3D in that turn. After they confirm, run Gate 4 after each changed spread/state. If page-turn or
-shared renderer code changes, schedule Gate 6.
-
-Use `references/engineering.md` and `references/runtime-contract.md`. Keep chapter identity, spread
-identity, board identity, passage identity, scene ownership and audio identity separate. Inserted spreads
-must not rename old audio or break bookmarks.
-
-Create every spread as its own scene. A turn is a continuous leaf transformation, not an invisible jump
-between duplicate books. Page texture and standees must follow the same page frame. Use fixed page-block
-heights unless requested otherwise. Start from `templates/runtime/page-turn-state.mjs` and the
-parameterized Three.js runtime when appropriate; do not copy story-specific scene recipes from a case
-study.
-
-When dialogue-driven changes are wanted, describe deterministic target states. Fold the old actor fully
-before changing geometry, pose or position; then raise the replacement. No sliding actors across paper.
-Synchronize mesh, alpha shadows, back/edge material, dimensions, crease and rear supports. Reverse
-reading and restored bookmarks must produce the same state.
-
-### 7. Reading and Audio
-
-If Step 1 chose voiced narration, inspect current `generate` speech models before attaching audio.
-When no speech model is available, or a narration file fails to generate, **halt**: browser voice,
-labeled in the UI / silent this page / wait for files. Do not silently switch. A labeled browser
-fallback is allowed only after they pick it.
-
-Run the audio and persistence portions of QA Gate 5 as soon as the first narrated multipassage spread works; repeat at chapter completion.
-
-Show all current-spread passages in a bounded reading region. Highlight the actually playing passage; do not fake word-level alignment without timestamps.
-
-Use ended events to advance to the next passage, then after a deliberate pause turn the page. Never use estimated text durations when real audio exists. Initial playback requires a user action. Manual page navigation cancels old audio; backgrounding pauses; failures stop with retry rather than silently skipping. Include pause/resume, replay and speed control.
-
-Keep explicit audio paths on passages. Reuse unchanged recordings after splitting spreads. Persist versioned bookmark/settings locally and migrate earlier ids/offsets. Restore silently. Do not promise cross-device storage without an implemented backend.
-
-### 8. Verify and Deliver
-
-Complete Gate 5 for every changed chapter. **Halt before the next chapter**: keep this chapter / open
-the next, naming the region or legend. Then run Gate 6 at publication scope. Run the data validator, then actual browser QA. Data validation is not visual QA. Do not rerun only the final list while skipping the earlier asset and representative-spread gates.
-
-- Click actual UI arrows forward/back through every changed spread and chapter boundary; test rapid clicks, directory jumps, bookends, and old bookmarks.
-- Play real audio: multiple passages on one spread, end-to-turn, pause/resume, manual cancellation, errors, replay and final stop.
-- Inspect front, back, oblique view and intermediate turn screenshots. Test at least desktop and 390x844 mobile. Canvas-pixel variance must be nonzero, assets loaded, UI separate, text readable.
-- For schema v3, run `scripts/reconstruct-board.mjs` for every changed spread and store its SVG/report. A failed or timed-out reconstruction blocks publication.
-- Run the page-depth gate: compare full-book and paper-only renders at low, normal and side camera angles. Confirm printed page pixels are not hidden by page blocks or spine; record the sample grid and threshold.
-- Sample both turn directions across every affected adjacent pair, including unchanged neighbors. Filter out detached/hidden legacy meshes. Check noncoplanar paper/support edges against page surfaces and the moving leaf; report pair, direction, progress, asset/support id, hit surface, sample count, failures and limitations. Never call finite sampling a proof of no intersection.
-- Freeze at endpoint and near-endpoint progress values. Assert no attachment position/orientation jump and no whole-book scene reset.
-- Check every pose and reveal state when used, including reverse and restored states. Regenerate affected directory thumbnails after final layout changes.
-- Finish/close test browser sessions; record shutdown errors as errors, not clean test completion. A browser timeout, thumbnail failure or incomplete shutdown is a failed gate, not a warning. Store reproducible tests with the project, not only in temporary files.
-- For an adapter exposing the runtime contract, run `scripts/runtime-contract-check.cjs` across every adjacent pair in both directions. Validate any browser-produced page-depth report with `scripts/verify-depth-report.cjs`.
-- Re-run `scripts/world-survey.cjs --binding=<data/book.json>` so every bound name still resolves to an atom in this world. A chapter that invents canon without an `authored` entry is an error, not a gap.
-- Publish, verify returned ready state, and summarize implemented scope versus deliberate simplifications. Hand over the Work using interaction-components; use next-steps for creative follow-on choices.
-
-## Reference Implementation
-
-In the originating world, `works/webs/little-prince-pop-up-sample` demonstrates the approach. Treat it as a case study, not a portable dependency: it contains story-specific assets, legacy numeric ids and hidden historical code. Read it only when available; never copy the whole application and claim it is a neutral template. Do not copy its story, generated assets or audio into another project without checking the intended reuse rights.
+The 哈利波特（正牌） world's `works/webs/hogwarts-letter-popup` is the case this version was rebuilt
+from: qwen isolation from an approved master, BiRefNet alpha, and the per-item depth fix after a
+trunk and a rail strip cut through each other on a shared band. Treat it as a case study: its
+assets, copy and story are that world's.

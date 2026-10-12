@@ -14,7 +14,10 @@ function validate(book, root, options = {}) {
   const layers = new Set(['background', 'midground', 'foreground']);
   const roles = new Set(['background', 'midground', 'foreground', 'character', 'landmark', 'prop', 'atmosphere', 'ground']);
   const pageSides = new Set(['left', 'right', 'spread']);
-  const cutModes = new Set(['crop', 'regenerate', 'manual']);
+  const cutModes = new Set(['isolate', 'isolate-key', 'curtain', 'crop', 'regenerate', 'manual']);
+  const isolateModes = new Set(['isolate', 'isolate-key', 'curtain']);
+  const hex = value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value);
+  const minGap = finite(book?.boardToBook?.minDepthGap) ? book.boardToBook.minDepthGap : 0.02;
   const rootAbs = path.resolve(root);
   const localFile = (value, label, required = true) => {
     if (value == null && !required) return;
@@ -39,9 +42,44 @@ function validate(book, root, options = {}) {
     if (!text(book.boardToBook.profile)) fail('boardToBook.profile is required');
     if (!text(book.boardToBook.canonicalCamera)) fail('boardToBook.canonicalCamera is required');
     if (!(book.boardToBook.gutter >= 0 && book.boardToBook.gutter < 0.5 && finite(book.boardToBook.gutter))) fail('boardToBook.gutter must be finite in [0,0.5)');
-    if (!book.boardToBook.depthBands || typeof book.boardToBook.depthBands !== 'object') fail('boardToBook.depthBands is required');
-    else for (const layer of layers) if (!(finite(book.boardToBook.depthBands[layer]) && book.boardToBook.depthBands[layer] >= 0 && book.boardToBook.depthBands[layer] <= 1)) fail(`boardToBook.depthBands.${layer} must be in [0,1]`);
+    const windows = book.boardToBook.depthWindows;
+    if (windows != null) {
+      for (const layer of layers) {
+        const w = windows[layer];
+        if (!Array.isArray(w) || w.length !== 2 || !w.every(finite) || !(w[0] >= 0 && w[1] <= 1 && w[0] < w[1])) fail(`boardToBook.depthWindows.${layer} must be [lo, hi] inside [0,1]`);
+      }
+      if (windows.background?.[1] >= windows.midground?.[0] || windows.midground?.[1] >= windows.foreground?.[0]) fail('boardToBook.depthWindows must not overlap: background < midground < foreground');
+    }
+    if (book.boardToBook.depthBands != null) warn('boardToBook.depthBands is legacy: shared bands put several standees on one z; use depthWindows + scripts/place-scene.mjs');
+    if (!(minGap > 0 && minGap < 0.2)) fail('boardToBook.minDepthGap must be in (0, 0.2)');
   }
+  // theme: the book dresses itself from this world, not from the template
+  const DEFAULT_PALETTE = { paper: '#efe6d3', paperDeep: '#e3d7bb', ink: '#2b241f', inkSoft: '#6a5c4b', accent: '#a63328', cloth: '#6f2a25', table: '#8a7458' };
+  const theme = book.theme;
+  if (!theme || typeof theme !== 'object') { if (production) fail('theme is required: derive palette, type, chrome and book materials from this world (references/theming.md)'); }
+  else {
+    const palette = theme.palette || {};
+    for (const key of Object.keys(DEFAULT_PALETTE)) if (!hex(palette[key])) fail(`theme.palette.${key} must be #rrggbb`);
+    if (production) {
+      if (!text(theme.derivedFrom) || /^replace/i.test(theme.derivedFrom)) fail('theme.derivedFrom must record which world cues / board palette the theme came from');
+      const same = Object.keys(DEFAULT_PALETTE).filter(key => String(palette[key]).toLowerCase() === DEFAULT_PALETTE[key]).length;
+      if (same >= 5) fail('theme.palette is still the template default — run scripts/palette.py on the approved boards and dress the book for this world');
+    }
+    if (theme.chrome != null && !['sidebar', 'footer', 'margin'].includes(theme.chrome)) fail('theme.chrome must be sidebar, footer or margin');
+    // The book object is the original runtime model: it takes only palette.cloth (boards) and
+    // book.background (canvas). Other theme.book keys from older manifests are ignored.
+    if (theme.book?.background != null && !hex(theme.book.background)) fail('theme.book.background must be #rrggbb');
+  }
+  if (book.narration != null && !['none', 'files', 'browser'].includes(book.narration.mode)) fail('narration.mode must be none, files or browser');
+  // the cover is generated for the cover, never cut out of a spread's composition master
+  const coverAsset = (book.assets || []).find(asset => asset.id === book.covers?.front);
+  if (!coverAsset) fail('covers.front must reference a cover asset');
+  else if (production) {
+    if (coverAsset.provenance?.recipe !== 'book-cover') fail('cover asset needs provenance.recipe "book-cover" — generate a dedicated cover (references/book-cover.md)');
+    const boardFiles = new Set((book.spreads || []).map(spread => spread.compositionBoard?.file).filter(Boolean));
+    if (boardFiles.has(coverAsset.file)) fail('cover asset is a composition master; generate a dedicated cover');
+  }
+  if (book.covers?.titlePlacement != null && !['top', 'bottom', 'none'].includes(book.covers.titlePlacement)) fail('covers.titlePlacement must be top, bottom or none');
   if (!book.pageGeometry || typeof book.pageGeometry !== 'object' || !(book.pageGeometry.pageWidth > 0) || !(book.pageGeometry.pageHeight > 0)) fail('pageGeometry.pageWidth and pageHeight are required');
 
   // Reuse the stable v2 data/asset/passages checks without accepting v2 as a production book.
@@ -82,6 +120,10 @@ function validate(book, root, options = {}) {
       if (!layers.has(item.depthBand)) fail(`${spread.id} boardItem ${item.id}: invalid depthBand`);
       if (!cutModes.has(item.cutMode)) fail(`${spread.id} boardItem ${item.id}: invalid cutMode`);
       if (item.cutMode === 'manual' && !text(item.reason)) fail(`${spread.id} boardItem ${item.id}: manual cutMode requires reason`);
+      if (isolateModes.has(item.cutMode) && !text(item.subject)) fail(`${spread.id} boardItem ${item.id}: ${item.cutMode} needs subject (what qwen keeps, as the board shows it)`);
+      if (isolateModes.has(item.cutMode) && production && !/^https:\/\//.test(board.url || '')) fail(`${spread.id}: compositionBoard.url (https) is required to cut with qwen`);
+      if (item.identityRef != null && !/^https:\/\//.test(item.identityRef) && production) fail(`${spread.id} boardItem ${item.id}: identityRef must be an https URL`);
+      if (item.depth != null && !finite(item.depth)) fail(`${spread.id} boardItem ${item.id}: manual depth must be a number`);
       if (item.required != null && typeof item.required !== 'boolean') fail(`${spread.id} boardItem ${item.id}: required must be boolean`);
     }
 
@@ -117,6 +159,15 @@ function validate(book, root, options = {}) {
       }
     }
     for (const item of boardItems) if (item.required !== false && !sceneByBoard.has(item.id)) fail(`${spread.id} boardItem ${item.id}: required item has no scene placement`);
+    // every standee on a spread stands on its own z: shared depth is how neighbours interpenetrate
+    const placed = (Array.isArray(spread.scene) ? spread.scene : []).filter(scene => Array.isArray(scene.anchor) && finite(scene.anchor[1]));
+    const byDepth = [...placed].sort((a, b) => a.anchor[1] - b.anchor[1]);
+    for (let i = 1; i < byDepth.length; i++) {
+      const gap = byDepth[i].anchor[1] - byDepth[i - 1].anchor[1];
+      if (gap < minGap - 1e-9) fail(`${spread.id}: ${byDepth[i - 1].id} and ${byDepth[i].id} share depth (gap ${gap.toFixed(4)} < ${minGap}); run scripts/place-scene.mjs so every standee gets its own z`);
+    }
+    const order = { background: 0, midground: 1, foreground: 2 };
+    for (const a of placed) for (const b of placed) if (order[a.layer] < order[b.layer] && a.anchor[1] >= b.anchor[1]) fail(`${spread.id}: ${a.id} (${a.layer}) must stand behind ${b.id} (${b.layer})`);
     if (production && !chapterIds.has(spread.chapterId)) fail(`${spread.id}: chapterId must resolve to a book chapter`);
   }
   if (production && !globalBoardItems.size) fail('schema v3 production book has no board items');

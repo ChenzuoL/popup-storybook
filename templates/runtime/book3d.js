@@ -1,4 +1,10 @@
 // book3d.js — the paper book itself: boards, page blocks, deforming leaf, paper standees.
+// The book model (geometry, materials, open/turn motion, camera, drag) is the original
+// popup-storybook runtime. On top of it: one hinge for open/close (front board + left page block +
+// left page turn together about the spine — no drawer-like fan-out), a closed book that is visible
+// while the rest of the textures bind, open-to-bookmark, theme colours for the boards and the stage,
+// a dedicated titled cover, a pop-up scene that rises on one curve with the page angle (left-page
+// pieces turn with their page; gutter-spanning pieces are cut at the gutter), and QA hooks.
 import * as THREE from '../vendor/three.module.min.js';
 
 const PAGE_W = 0.888;          // page width in book units (matches the plate's half aspect)
@@ -7,7 +13,6 @@ const BLOCK_H = 0.062;         // fixed page-block height
 const BOARD_H = 0.022;         // board thickness under each block
 const PAGE_Y = 0;              // the page plane sits at y = 0
 const LEAF_LIFT = 0.006;       // keeps the turning leaf off the settled page
-const COVER_T = 0.016;         // cover board thickness
 const CURL_MAX = 0.72;         // peak curl of a turning leaf (gentle, like a lifted sheet)
 
 const FOLD_START = 0.02;     // the whole outgoing scene lies down together over this window
@@ -18,8 +23,8 @@ const TURN_MS = 2800;
 const TURN_DELAY = 200;
 const PAGE_COVER_EPS = 0.0001; // only the visually flat endpoint belongs exclusively to the moving leaf
 const RISE_MS = 430;
-const RISE_STAGGER = 70;
-const OPEN_MS = 1500;
+const OPEN_MS = 2000;
+const DEPLOY_FROM = 0.24;           // fraction of the opening where the scene comes into sight and starts rising               // a little slower: the scene unfolds with the paper
 const ORBIT_YAW = 2.55;        // ~146°: walk around to the back of the book
 const ORBIT_PITCH_MIN = 0.28;  // almost top-down
 const ORBIT_PITCH_MAX = 1.48;  // almost table-level, never under the table
@@ -102,6 +107,11 @@ export class PopupBook {
     this._disposed = false;
     this.pageW = Number(book.pageGeometry?.pageWidth) || PAGE_W;
     this.pageH = Number(book.pageGeometry?.pageHeight) || PAGE_H;
+    const theme = book.theme || {};
+    this.colors = {
+      board: theme.palette?.cloth || '#6f2a25',
+      clear: theme.book?.background || theme.palette?.paperDeep || '#e9dfc9'
+    };
   }
 
   // ---------------------------------------------------------------- loading
@@ -109,7 +119,7 @@ export class PopupBook {
   load(onProgress) {
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, alpha: false });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    this.renderer.setClearColor(0xe9dfc9, 1);
+    this.renderer.setClearColor(new THREE.Color(this.colors.clear), 1);
     if ('outputColorSpace' in this.renderer) this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     this.scene = new THREE.Scene();
@@ -128,7 +138,7 @@ export class PopupBook {
     this.paperMat = new THREE.MeshStandardMaterial({ color: 0xefe4cb, roughness: 0.96, metalness: 0 });
     // Page blocks use a quiet paper edge. Repeating horizontal rules read as scanlines when the camera orbits.
     this.pageEdgeMat = new THREE.MeshStandardMaterial({ color: 0xe1d3b2, roughness: 0.98, metalness: 0 });
-    this.boardMat = new THREE.MeshStandardMaterial({ color: 0x6f2a25, roughness: 0.82, metalness: 0.02 });
+    this.boardMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(this.colors.board), roughness: 0.82, metalness: 0.02 });
     this.insideMat = new THREE.MeshStandardMaterial({ color: 0xe4d7bd, roughness: 0.96, metalness: 0 });
     this.propMat = new THREE.MeshBasicMaterial({ color: 0xe0d2ae });   // unlit flat paper: no normals to recompute
 
@@ -137,48 +147,49 @@ export class PopupBook {
     this._buildLeaf();
     this._buildCover();
 
+    // The closed book is on screen at once; the cover binds first, then everything else.
+    this.leftSurface.visible = false;
+    this.rightSurface.visible = false;
+    this.resize();
+    this._loop();
+
     const files = [...new Set(this.book.assets.flatMap(a => a.maskFile ? [a.file, a.maskFile] : [a.file]))];
+    const coverFile = this.assetById.get(this.book.covers?.front)?.file;
     let done = 0;
+    const tick = () => { done += 1; if (onProgress) onProgress(done, files.length); };
     const loader = new THREE.TextureLoader();
-    return Promise.all(files.map(file => new Promise(res => {
-      loader.load(file, tex => {
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
-        tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
-        this._textures.set(file, tex);
-        done += 1; if (onProgress) onProgress(done, files.length);
-        res();
-      }, undefined, () => {
-        if (!this.failedAssets) this.failedAssets = [];
-        this.failedAssets.push(file);
-        done += 1; if (onProgress) onProgress(done, files.length);
-        res();
-      });
-    }))).then(() => {
-      const artTex = this._tex(this.book.covers.front);
-      if (artTex && artTex.image && artTex.image.width) {
-        // crop the cover plate to the page aspect instead of stretching it
-        const frac = Math.min(1, (artTex.image.width / artTex.image.height) / (this.pageW / this.pageH));
-        if (frac < 0.999) {
-          const uv = this.coverArt.geometry.attributes.uv;
-          const u0 = 0.5 - frac / 2;
-          for (let i = 0; i < uv.count; i++) uv.setX(i, u0 + uv.getX(i) * frac);
-          uv.needsUpdate = true;
-        }
+    const loadTex = file => new Promise(res => loader.load(file, tex => {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+      tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+      this._textures.set(file, tex);
+      tick();
+      res(tex);
+    }, undefined, () => {
+      if (!this.failedAssets) this.failedAssets = [];
+      this.failedAssets.push(file);
+      tick();
+      res(null);
+    }));
+    const cover = (coverFile ? loadTex(coverFile) : Promise.resolve(null)).then(async tex => {
+      if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch { /* system fonts */ } }
+      const coverTex = this._composeCover(tex);
+      if (coverTex) this._textures.set('__cover', coverTex);
+      const map = coverTex || tex;
+      if (map) {
+        this.coverArt.material.map = map;
+        this.coverArt.material.color.set(0xffffff);
+        this.coverArt.material.needsUpdate = true;
+        this.renderer.initTexture(map);
       }
-      this.coverArt.material.map = artTex;
-      this.coverInside.material.map = this._tex(this.spreads[0].pageArt.left);
-      this.coverArt.material.needsUpdate = true;
-      this.coverInside.material.needsUpdate = true;
+    });
+    return cover.then(() => Promise.all(files.filter(f => f !== coverFile).map(loadTex))).then(() => {
       this._applySpreadTextures(0);
-      this.leftSurface.visible = false;
-      this.rightSurface.visible = false;
       this._buildStandees();
       // Upload before reading begins, not on the final frame of a page turn.
       for (const texture of this._textures.values()) this.renderer.initTexture(texture);
       this.state.ready = true;
       this.resize();
-      this._loop();
     });
   }
 
@@ -190,8 +201,8 @@ export class PopupBook {
   // ---------------------------------------------------------------- geometry
 
   _buildBlocks() {
-    this.leftStack = new THREE.Group();      // the left half only exists once the book is opened
-    this.leftStack.scale.x = 0.001;
+    this.leftStack = new THREE.Group();      // left page block + its board; turns with the hinge
+    this.leftStack.position.y = -0.0006;     // closed, it rests a hair above the right block, never on its plane
     this.root.add(this.leftStack);
     for (const side of [-1, 1]) {
       const cx = side * this.pageW / 2;
@@ -263,19 +274,93 @@ export class PopupBook {
   }
 
   _buildCover() {
+    // One hinge, the way a real book opens: the front board, the left half of the page block and the
+    // left printed page are glued together and turn about the spine (-PI closed -> 0 open), lifting up
+    // and over. Nothing is scaled or slid; a left half that fans out of the gutter reads as a drawer.
+    this.hinge = new THREE.Group();
+    this.root.add(this.hinge);
+    this.hinge.add(this.leftStack);
+    this.hinge.add(this.leftSurface);
+    this.frontBoard = this.leftStack.children.find(m => m.geometry?.parameters?.height === BOARD_H) || null;
+    // Spine cap: with the left half on top, the closed book's spine edge is twice as tall as the fixed
+    // joint. Hidden once the book lies open, where it would coincide with that joint.
+    this.spineCap = new THREE.Mesh(new THREE.BoxGeometry(0.052, BLOCK_H + BOARD_H, this.pageH + 0.016), this.boardMat);
+    this.spineCap.position.set(0, PAGE_Y - (BLOCK_H + BOARD_H) / 2 - 0.0006, 0);
+    this.hinge.add(this.spineCap);
+    // The cover print on the outer face of the front board. Authored in the closed pose, then turned
+    // into hinge-local (open) coordinates so the hinge's -PI brings it back on top.
+    const closedTop = BLOCK_H + 0.0006 + BOARD_H + 0.0012;
     const geo = new THREE.PlaneGeometry(this.pageW, this.pageH);
     geo.rotateX(-Math.PI / 2);
-    geo.translate(this.pageW / 2, 0, 0);
-    const inside = geo.clone();
-    const iuv = inside.attributes.uv;
-    for (let i = 0; i < iuv.count; i++) iuv.setX(i, 0.5 * (1 - iuv.getX(i)));  // where it lands on the left
+    geo.translate(this.pageW / 2, closedTop, 0);
+    geo.rotateZ(Math.PI);
+    this.coverArt = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+      color: new THREE.Color(this.colors.board), roughness: 0.86, metalness: 0,
+      polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1
+    }));
+    this.hinge.add(this.coverArt);
+    this.hinge.rotation.z = -Math.PI;
+    this.coverGroup = this.hinge;            // older readers of the QA surface use this name
+  }
 
-    this.coverArt = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, metalness: 0 }));
-    this.coverArt.position.y = COVER_T;
-    this.coverInside = new THREE.Mesh(inside, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.94, metalness: 0, side: THREE.DoubleSide }));
-    this.coverGroup = new THREE.Group();
-    this.coverGroup.add(this.coverArt, this.coverInside);
-    this.root.add(this.coverGroup);
+  /** Cover texture: the dedicated cover art centre-cropped to the page aspect, plus the title set in
+   *  the theme's display face (image models cannot be trusted with text, least of all CJK). */
+  _composeCover(tex) {
+    const img = tex && tex.image;
+    if (!img || !img.width) return null;
+    const aspect = this.pageW / this.pageH;
+    const H = 1400, W = Math.round(H * aspect);
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    const ia = img.width / img.height;
+    let sx = 0, sy = 0, sw = img.width, sh = img.height;
+    if (ia > aspect) { sw = img.height * aspect; sx = (img.width - sw) / 2; } else { sh = img.width / aspect; sy = (img.height - sh) / 2; }
+    g.drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
+    const covers = this.book.covers || {};
+    const title = covers.title ?? this.book.title;
+    if (title && covers.titlePlacement !== 'none') this._drawCoverTitle(g, W, H, String(title), covers.subtitle || '', covers.titlePlacement === 'bottom' ? 'bottom' : 'top');
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+    return t;
+  }
+
+  _drawCoverTitle(g, W, H, title, subtitle, placement) {
+    const css = getComputedStyle(document.documentElement);
+    const face = (css.getPropertyValue('--font-display') || '').trim() || 'serif';
+    const covers = this.book.covers || {};
+    const ink = covers.titleColor || this.book.theme?.palette?.paper || '#f6efdf';
+    const [main, ...rest] = title.split(/\s+[·|｜]\s+/);
+    const second = [rest.join(' · '), subtitle].filter(Boolean).join('  ');
+    const top = placement === 'top';
+    const band = H * 0.38;
+    const grad = top ? g.createLinearGradient(0, 0, 0, band) : g.createLinearGradient(0, H, 0, H - band);
+    grad.addColorStop(0, 'rgba(18,12,8,0.66)');
+    grad.addColorStop(0.55, 'rgba(18,12,8,0.34)');
+    grad.addColorStop(1, 'rgba(18,12,8,0)');
+    g.fillStyle = grad;
+    if (top) g.fillRect(0, 0, W, band); else g.fillRect(0, H - band, W, band);
+    let size = W * 0.115;
+    const fit = (txt, sz, weight, max) => { g.font = `${weight} ${sz}px ${face}`; while (g.measureText(txt).width > max && sz > 14) { sz -= 2; g.font = `${weight} ${sz}px ${face}`; } return sz; };
+    if ('letterSpacing' in g) g.letterSpacing = `${Math.round(W * 0.006)}px`;
+    size = fit(main, size, 600, W * 0.84);
+    g.textAlign = 'center';
+    g.textBaseline = 'alphabetic';
+    g.fillStyle = ink;
+    g.shadowColor = 'rgba(0,0,0,0.5)';
+    g.shadowBlur = size * 0.2;
+    g.shadowOffsetY = size * 0.05;
+    const y1 = top ? H * 0.085 + size : H * 0.86;
+    g.fillText(main, W / 2, y1);
+    if (second) {
+      const s2 = fit(second, Math.max(16, size * 0.4), 500, W * 0.8);
+      const y2 = y1 + size * 0.42 + s2 * 1.55;            // clear of the main line's descenders
+      g.fillText(second, W / 2, y2);
+      g.shadowColor = 'transparent';
+      g.fillRect(W / 2 - W * 0.06, y1 + size * 0.28, W * 0.12, Math.max(1.5, W * 0.0022));
+    }
+    g.shadowColor = 'transparent';
   }
 
   // ---------------------------------------------------------------- standees
@@ -302,74 +387,136 @@ export class PopupBook {
         const w = h * aspect;
         const planeH = h / visH;
         const planeW = planeH * (img.width / img.height);
-
-        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(planeW, planeH),
-          new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: 0.42, roughness: 0.9, metalness: 0 }));
-        mesh.material.map.anisotropy = 8;
         const mask = a.maskFile ? this._textures.get(a.maskFile) : null;
-        const back = new THREE.Mesh(mesh.geometry, new THREE.MeshStandardMaterial({
-          color: 0xe6dabd, roughness: 0.97, metalness: 0,
-          alphaMap: mask, transparent: true, alphaTest: 0.42, side: THREE.BackSide
-        }));
-        // move the cutout so its VISIBLE bottom-centre becomes the fold axis
+        // the VISIBLE bottom-centre is the fold axis
         const pivotX = -planeW * (bounds[0] + visW / 2 - 0.5);
         const pivotY = -planeH * (0.5 - bounds[1] - visH);
-        mesh.geometry.translate(pivotX, pivotY, 0);
-
-        // a folded prop behind the cutout: two paper panels meeting at a knee that opens as the figure rises
-        const panelGeo = () => {
-          const g = new THREE.BufferGeometry();
-          g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(12), 3));
-          g.setIndex([0, 1, 2, 2, 1, 3]);
-          return g;
-        };
-        const support = [0, 1].map(() => { const m = new THREE.Mesh(panelGeo(), this.propMat); m.frustumCulled = false; return m; });
-
-        const rig = new THREE.Group();          // carries the fold: 0 = upright, -PI/2 = flat on the page
-        rig.add(mesh, back);
-        const figure = new THREE.Group();       // carries the page-surface frame while the leaf is in flight
-        figure.add(rig, ...support);
-
-        const side = item.side === 'left' ? -1 : 1;
+        const zNorm = item.anchor[1];
         const spreadSpace = item.coordinateSpace === 'spread' || item.crossGutter === true;
-        const xNorm = item.anchor[0], zNorm = item.anchor[1];
-        // Normal items use page-local x (0=gutter, 1=outer edge). A spread-space item keeps
-        // the composition board's full-spread x and may cross the gutter when explicitly allowed.
-        const homeX = spreadSpace ? (xNorm - 0.5) * 2 * this.pageW : side * xNorm * this.pageW;
-        const home = new THREE.Vector3(homeX, PAGE_Y + 0.003, -this.pageH / 2 + zNorm * this.pageH);
-        figure.position.copy(home);
-        rig.rotation.x = -Math.PI / 2;
-        group.add(figure);
-
-        const shadow = new THREE.Mesh(new THREE.PlaneGeometry(w * 1.5, w * 0.5),
-          new THREE.MeshBasicMaterial({ map: this._shadowTex, transparent: true, depthWrite: false, opacity: 0.9 }));
-        shadow.rotation.x = -Math.PI / 2;
-        shadow.position.set(home.x, PAGE_Y + 0.002, home.z - h * 0.06);
-        shadow.visible = false;
-        group.add(shadow);
-
-        // the fold line printed on the page where this cut-out is glued
-        const crease = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(w * 0.32, 0.2), 0.012),
-          new THREE.MeshBasicMaterial({ color: 0x8c806b, transparent: true, opacity: 0.22, depthWrite: false }));
-        crease.rotation.x = -Math.PI / 2;
-        crease.position.set(home.x, PAGE_Y + 0.0018, home.z - h * 0.02);
-        crease.visible = false;
-        group.add(crease);
-
-        const layerDelay = item.layer === 'background' ? 0 : item.layer === 'foreground' ? 0.16 : 0.08;
-        const s = spreadSpace ? Math.max(0, Math.min(this.pageW, homeX)) : xNorm * this.pageW;
-        const vHalfW = spreadSpace
-          ? (planeW * visW) / 2
-          : Math.min((planeW * visW) / 2, item.side === 'right' ? this.pageW - s : s);
-        items.push({
-          figure, rig, shadow, crease, mesh, support, home, side: item.side, xNorm, zNorm, h, w, layerDelay,
-          assetId: item.assetId, sceneId: item.id, spreadSpace, leafS: s, vHalfW, vH: planeH * visH
-        });
-        this._updateSupport(items[items.length - 1]);
+        const base = { tex, mask, planeH, pivotY, h, zNorm, assetId: item.assetId, layer: item.layer };
+        if (!spreadSpace) {
+          const side = item.side === 'left' ? -1 : 1;
+          const xNorm = item.anchor[0];
+          const s = xNorm * this.pageW;
+          items.push(this._makeStandee(group, {
+            ...base, sceneId: item.id, side: item.side, homeX: side * s, u0: 0, u1: 1, width: planeW, offsetX: pivotX,
+            w, vHalfW: Math.min((planeW * visW) / 2, item.side === 'right' ? this.pageW - s : s), leafS: s, xNorm
+          }));
+          continue;
+        }
+        // A gutter-spanning piece (backdrop curtain, rail strip) is cut at the gutter into two halves,
+        // each glued to its own page — the paper equivalent of a V-fold. Then both halves turn with
+        // their page and rise on the same curve as everything else; one plane across both pages would
+        // cut through the page that is still turning.
+        const homeX = (item.anchor[0] - 0.5) * 2 * this.pageW;
+        const L = homeX + pivotX - planeW / 2, R = L + planeW;     // plane edges in spread x
+        const visL = homeX - w / 2, visR = homeX + w / 2;
+        const halves = L < -0.002 && R > 0.002
+          ? [['left', L, 0], ['right', 0, R]]
+          : [[(L + R) / 2 < 0 ? 'left' : 'right', L, R]];
+        for (const [side, x0, x1] of halves) {
+          const width = x1 - x0, cx = (x0 + x1) / 2;
+          const vis = Math.max(0.01, Math.min(x1, visR) - Math.max(x0, visL));
+          const sAbs = Math.abs(cx);
+          items.push(this._makeStandee(group, {
+            ...base, sceneId: halves.length > 1 ? `${item.id}:${side[0]}` : item.id, side, homeX: cx,
+            u0: (x0 - L) / planeW, u1: (x1 - L) / planeW, width, offsetX: 0,
+            w: vis, vHalfW: Math.min(width / 2, side === 'right' ? this.pageW - sAbs : sAbs), leafS: sAbs, xNorm: sAbs / this.pageW,
+            gutterHalf: halves.length > 1
+          }));
+        }
       }
       this._standees.set(spread.id, { group, items });
       this._standeeRoot.add(group);
     }
+  }
+
+  /** One paper standee: printed front, plain back through the mask, rear prop, crease, shadow. */
+  _makeStandee(group, o) {
+    const geo = new THREE.PlaneGeometry(o.width, o.planeH);
+    if (o.u0 !== 0 || o.u1 !== 1) {
+      const uv = geo.attributes.uv;
+      for (let i = 0; i < uv.count; i++) uv.setX(i, o.u0 + uv.getX(i) * (o.u1 - o.u0));
+      uv.needsUpdate = true;
+    }
+    geo.translate(o.offsetX, o.pivotY, 0);
+    const mesh = new THREE.Mesh(geo,
+      new THREE.MeshStandardMaterial({ map: o.tex, transparent: true, alphaTest: 0.42, roughness: 0.9, metalness: 0 }));
+    mesh.material.map.anisotropy = 8;
+    const back = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+      color: 0xe6dabd, roughness: 0.97, metalness: 0,
+      alphaMap: o.mask, transparent: true, alphaTest: 0.42, side: THREE.BackSide
+    }));
+    // a folded prop behind the cutout: two paper panels meeting at a knee that opens as the figure rises
+    const panelGeo = () => {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(12), 3));
+      g.setIndex([0, 1, 2, 2, 1, 3]);
+      return g;
+    };
+    const support = [0, 1].map(() => { const m = new THREE.Mesh(panelGeo(), this.propMat); m.frustumCulled = false; return m; });
+    const rig = new THREE.Group();          // carries the fold: 0 = upright, -PI/2 = flat on the page
+    rig.add(mesh, back);
+    const figure = new THREE.Group();       // carries the page frame while the paper is in flight
+    figure.add(rig, ...support);
+    const home = new THREE.Vector3(o.homeX, PAGE_Y + 0.003, -this.pageH / 2 + o.zNorm * this.pageH);
+    figure.position.copy(home);
+    rig.rotation.x = -Math.PI / 2;
+    group.add(figure);
+    const w = o.w, h = o.h;
+    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(w * 1.5, w * 0.5),
+      new THREE.MeshBasicMaterial({ map: this._shadowTex, transparent: true, depthWrite: false, opacity: 0.9 }));
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.set(home.x, PAGE_Y + 0.002, home.z - h * 0.06);
+    shadow.visible = false;
+    group.add(shadow);
+    // the fold line printed on the page where this cut-out is glued
+    const crease = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(w * 0.32, 0.2), 0.012),
+      new THREE.MeshBasicMaterial({ color: 0x8c806b, transparent: true, opacity: 0.22, depthWrite: false }));
+    crease.rotation.x = -Math.PI / 2;
+    crease.position.set(home.x, PAGE_Y + 0.0018, home.z - h * 0.02);
+    crease.visible = false;
+    group.add(crease);
+    const it = {
+      figure, rig, shadow, crease, mesh, support, home, side: o.side, xNorm: o.xNorm, zNorm: o.zNorm, h, w,
+      assetId: o.assetId, sceneId: o.sceneId, spreadSpace: false, gutterHalf: !!o.gutterHalf,
+      leafS: o.leafS, vHalfW: o.vHalfW, vH: o.planeH * (h / o.planeH)
+    };
+    this._updateSupport(it);
+    return it;
+  }
+
+  /** Deploy a spread's scene from the hinge angle alone: every piece on one curve, together. Left-page
+   *  pieces are glued to the left page and turn with it. phi: -PI closed .. 0 open. */
+  _deployFromHinge(spreadId, phi) {
+    const rec = this._standees.get(spreadId);
+    if (!rec) return;
+    const open = 1 - Math.min(1, Math.abs(phi) / Math.PI);
+    // Inside a nearly shut book the scene is out of sight; it appears as the pages part (about 45°
+    // apart) and starts lifting at once, so nothing lies flat in view for long.
+    const r = smooth(Math.min(Math.max((open - DEPLOY_FROM) / (1 - DEPLOY_FROM), 0), 1));
+    const inSight = phi > -Math.PI * (1 - DEPLOY_FROM - 0.012);
+    const landed = Math.abs(phi) < 0.01;
+    for (const it of rec.items) {
+      it.rig.rotation.x = -Math.PI / 2 * (1 - r);
+      it.figure.visible = inSight;
+      if (it.side === 'left') {
+        it.riding = !landed;
+        if (landed) this._placeHome(it); else this._rideHinge(it, phi);
+        it.shadow.visible = inSight && landed && r > 0.3;
+      } else {
+        it.riding = false;
+        it.shadow.visible = inSight && r > 0.3;
+      }
+      this._updateSupport(it, r);
+    }
+  }
+
+  /** A left-page piece glued to the turning hinge: same rotation about the spine axis. */
+  _rideHinge(it, phi) {
+    const c = Math.cos(phi), s = Math.sin(phi);
+    it.figure.position.set(it.home.x * c - it.home.y * s, it.home.x * s + it.home.y * c, it.home.z);
+    it.figure.quaternion.setFromAxisAngle(this._gz, phi);
   }
 
   // ---------------------------------------------------------------- state
@@ -398,9 +545,12 @@ export class PopupBook {
 
   /** The two-panel paper prop behind a cut-out, re-solved every time the figure's fold changes. */
   _updateSupport(it, e = 1) {
-    if (it._fold === it.rig.rotation.x && it._shown === it.figure.visible) return;
+    const up = e > 0.45;
+    if (it._fold === it.rig.rotation.x && it._shown === it.figure.visible && it._up === up && it._ride === !!it.riding) return;
     it._fold = it.rig.rotation.x;
     it._shown = it.figure.visible;
+    it._up = up;
+    it._ride = !!it.riding;
     if (!it.figure.visible) {
       it.support[0].visible = false;
       it.support[1].visible = false;
@@ -421,7 +571,7 @@ export class PopupBook {
     this._writePanel(it.support[0], top, knee, w);
     this._writePanel(it.support[1], knee, base, w);
     // the prop only reads as paper once the cut-out is well up; near flat its two panels invert
-    const shown = th < -0.10 && e > 0.45;
+    const shown = th < -0.10 && up;
     it.support[0].visible = shown;
     it.support[1].visible = shown;
     it.crease.visible = shown && !it.riding;
@@ -501,14 +651,36 @@ export class PopupBook {
 
   // ---------------------------------------------------------------- motions
 
-  open() {
-    if (this.state.phase !== 'closed' || !this.state.ready) return;
+  /** Prepare a spread's page art and the cover's inside before opening onto it. */
+  _prepareSpread(index) {
+    this._applySpreadTextures(index);
+  }
+
+  open(targetIndex = this.state.index) {
+    if (this.state.phase !== 'closed' || !this.state.ready) return false;
+    const index = Math.max(0, Math.min(this.spreads.length - 1, targetIndex | 0));
+    this.state.index = index;
+    this._prepareSpread(index);
     this.state.phase = 'opening';
-    this._showStandees(this.spreads[0].id, 'folded');
+    this.hinge.rotation.z = -Math.PI;
+    this._showStandees(this.spreads[index].id, 'folded');
     this.leftSurface.visible = false;
     this.anim = { kind: 'open', t: 0, dur: OPEN_MS, settle: false };
     this.hooks.onStart && this.hooks.onStart('open');
+    return true;
   }
+
+  /** Close from a settled spread: the original opening, reversed. */
+  close() {
+    if (!this.state.ready || this.state.phase !== 'idle' || this.anim) return false;
+    this.state.phase = 'closing';
+    this.leafGroup.visible = false;
+    this.anim = { kind: 'close', t: 0, dur: OPEN_MS };
+    this.hooks.onStart && this.hooks.onStart('close');
+    return true;
+  }
+
+  settled() { return this.state.phase === 'idle' && !this.anim; }
 
   turn(dir) {
     if (!this.state.ready || this.state.phase !== 'idle' || this.anim) return false;
@@ -574,8 +746,8 @@ export class PopupBook {
 
   goTo(spreadId) {
     const index = this.spreads.findIndex(s => s.id === spreadId);
-    if (index < 0 || !this.state.ready || index === this.state.index || this.state.phase === 'turning' || this.state.phase === 'opening') return false;
-    if (this.state.phase === 'closed') { this.state.index = index; this._applySpreadTextures(index); return true; }
+    if (index < 0 || !this.state.ready || index === this.state.index || this.state.phase === 'turning' || this.state.phase === 'opening' || this.state.phase === 'closing') return false;
+    if (this.state.phase === 'closed') { this.state.index = index; this._prepareSpread(index); return true; }
     this.anim = null;
     this.leafGroup.visible = false;
     this.state.phase = 'idle';
@@ -585,7 +757,7 @@ export class PopupBook {
     this._applySpreadTextures(index);
     this._showStandees(spreadId, 'folded');
     this._standees.get(spreadId).group.visible = true;
-    this.anim = { kind: 'settle', t: 0, dur: RISE_MS + RISE_STAGGER * 2 };
+    this.anim = { kind: 'settle', t: 0, dur: RISE_MS };
     this.hooks.onSettled && this.hooks.onSettled(this.current());
     return true;
   }
@@ -633,13 +805,23 @@ export class PopupBook {
 
   _finishOpen() {
     this.state.phase = 'idle';
-    this.state.index = 0;
-    this.coverGroup.visible = false;
-    this.leftStack.scale.x = 1;
+    this.hinge.rotation.z = 0;
     this.leftSurface.visible = true;
-    this._applySpreadTextures(0);
-    this._showStandees(this.spreads[0].id, 'up');
+    this._applySpreadTextures(this.state.index);
+    this._showStandees(this.spreads[this.state.index].id, 'up');
     this.hooks.onSettled && this.hooks.onSettled(this.current());
+  }
+
+  _finishClose() {
+    this.state.phase = 'closed';
+    this.drag.focus = 0;
+    this.hinge.rotation.z = -Math.PI;
+    this.leftSurface.visible = false;
+    this.rightSurface.visible = false;
+    const rec = this._standees.get(this.spreads[this.state.index].id);
+    if (rec) rec.group.visible = false;
+    this._visibleSpreads.clear();
+    this.hooks.onClosed && this.hooks.onClosed(this.current());
   }
 
   // ---------------------------------------------------------------- loop
@@ -653,20 +835,13 @@ export class PopupBook {
       a.t += dts;
       const t = Math.min(a.t / a.dur, 1);
       const e = easeInOut(t);
-      this.coverGroup.rotation.z = Math.PI * e;
-      // the left half of the block fans out from the gutter as the cover swings across it
-      this.leftStack.scale.x = Math.max(0.001, easeOut(Math.min(Math.max((e - 0.48) / 0.42, 0), 1)));
+      // the hinge lifts up and over the spine; the left page shows once it is off the right page
+      this.hinge.rotation.z = -Math.PI * (1 - e);
+      this.leftSurface.visible = e > 0.02;
       this.rightSurface.visible = true;
       this.drag.focus = e;
-      // the first scene rises out of the page as the cover comes over
-      const first = this._standees.get(this.spreads[0].id);
-      if (first) for (const it of first.items) {
-        const r = Math.min(Math.max((e - 0.56 - it.layerDelay) / 0.4, 0), 1);
-        it.figure.visible = r > 0.08;
-        it.rig.rotation.x = -Math.PI / 2 * (1 - easeOutBack(r));
-        it.shadow.visible = r > 0.3;
-        this._updateSupport(it, r);
-      }
+      // every piece rises together with the paper, driven by the hinge angle alone
+      this._deployFromHinge(this.spreads[this.state.index].id, this.hinge.rotation.z);
       if (t >= 1) { this.anim = null; this._finishOpen(); }
     } else if (a.kind === 'turn') {
       a.t += dts;
@@ -714,12 +889,24 @@ export class PopupBook {
         this._updateSupport(it, e);
       }
       if (done) { this.anim = null; this._finishTurn(a); }
+    } else if (a.kind === 'close') {
+      a.t += dts;
+      // the opening, backwards: the hinge turns back over and every piece lies down with it
+      const t = Math.min(Math.max(a.t / a.dur, 0), 1);
+      const e = 1 - easeInOut(t);
+      this.hinge.rotation.z = -Math.PI * (1 - e);
+      this.leftSurface.visible = e > 0.02;
+      this.rightSurface.visible = true;
+      this.drag.focus = e;
+      this._deployFromHinge(this.spreads[this.state.index].id, this.hinge.rotation.z);
+      if (t >= 1) { this.anim = null; this._finishClose(); }
     } else if (a.kind === 'settle') {
       a.t += dts;
       const spreadId = this.spreads[this.state.index].id;
       const rec = this._standees.get(spreadId);
       if (rec) for (const it of rec.items) {
-        const local = (a.t - it.layerDelay * 1000) / RISE_MS;
+        if (a.only && !a.only.has(it)) continue;
+        const local = a.t / RISE_MS;                 // every piece together: parallel planes never cross
         const t = Math.min(Math.max(local, 0), 1);
         it.figure.visible = t > 0.08;
         it.rig.rotation.x = -Math.PI / 2 * (1 - easeOutBack(t));
@@ -728,6 +915,61 @@ export class PopupBook {
       }
       if (a.t >= a.dur) this.anim = null;
     }
+  }
+
+  /** QA hook: pairs of standees on one spread whose fold lines are closer than minGap (book units). */
+  depthAudit(minGap = 0.015) {
+    const out = [];
+    for (const [id, rec] of this._standees) {
+      const zs = [...rec.items].sort((a, b) => a.home.z - b.home.z);
+      for (let i = 1; i < zs.length; i++) {
+        const gap = zs[i].home.z - zs[i - 1].home.z;
+        if (zs[i].gutterHalf && zs[i - 1].gutterHalf && zs[i].assetId === zs[i - 1].assetId) continue;
+        if (gap < minGap) out.push({ spread: id, a: zs[i - 1].assetId, b: zs[i].assetId, gap: Number(gap.toFixed(4)) });
+      }
+    }
+    return out;
+  }
+
+  /** QA hook: the open/close mechanism, and any piece standing where its paper is not there yet. */
+  mechanismAudit() {
+    let floating = 0;
+    const rec = this._standees.get(this.spreads[this.state.index]?.id);
+    if (rec && rec.group.visible && this.state.phase !== 'turning') {
+      // a raised piece must share its page's frame: left pieces turn with the hinge, right pieces stay put
+      const q = new THREE.Quaternion();
+      for (const it of rec.items) {
+        if (!it.figure.visible || it.rig.rotation.x < -1.2) continue;
+        const want = it.side === 'left' ? this.hinge.rotation.z : 0;
+        q.setFromAxisAngle(this._gz, want);
+        if (it.figure.quaternion.angleTo(q) > 0.02) floating++;
+      }
+    }
+    return {
+      model: 'original',
+      phase: this.state.phase,
+      hingeRotationZ: this.hinge.rotation.z,
+      coverRotationZ: this.hinge.rotation.z + Math.PI,     // 0 closed -> PI open, as before
+      leftStackScaleX: this.leftStack.scale.x,
+      spineCapVisible: this.spineCap.visible,
+      floatingStandees: floating,
+      orbit: { yaw: this.drag.yaw, pitch: this.drag.pitch }
+    };
+  }
+
+  /** QA hook: freeze the cover-opening mechanism at normalized progress. */
+  seekClose(u) {
+    if (!this.anim || this.anim.kind !== 'close') return null;
+    this.anim.t = Math.min(this.anim.dur * 0.999, Math.max(0, u) * this.anim.dur);
+    this._update(0);
+    return { hinge: this.hinge.rotation.z };
+  }
+
+  seekOpen(u) {
+    if (!this.anim || this.anim.kind !== 'open') return null;
+    this.anim.t = Math.min(this.anim.dur * 0.999, Math.max(0, u) * this.anim.dur);
+    this._update(0);
+    return { hinge: this.hinge.rotation.z, leftStack: this.leftStack.scale.x };
   }
 
   /** QA hook: sampled bounds of the turning leaf's vertices, in book units. */
@@ -823,6 +1065,7 @@ export class PopupBook {
     if (this.leafGroup.visible) targets.push(this.leafFront, this.leafBack);
     if (this.leftSurface.visible) targets.push(this.leftSurface);
     if (this.rightSurface.visible) targets.push(this.rightSurface);
+    if (this.frontBoard && Math.abs(this.hinge.rotation.z) > 0.01) targets.push(this.frontBoard);
 
     // Only opaque edges are sampled: a cut-out contributes its visible rectangle, a prop its two panels.
     const edges = [];
@@ -861,7 +1104,7 @@ export class PopupBook {
           if (da * db < 0 && depth > 0.004 && hit.distance > 0.008 && hit.distance < len - 0.008) {
             problems.push({
               kind, id,
-              object: (hit.object === this.leafFront || hit.object === this.leafBack) ? 'leaf' : 'page',
+              object: hit.object === this.frontBoard ? 'cover' : (hit.object === this.leafFront || hit.object === this.leafBack) ? 'leaf' : 'page',
               depth: Number(depth.toFixed(4)),
               distance: Number(hit.distance.toFixed(4))
             });
@@ -897,6 +1140,7 @@ export class PopupBook {
     requestAnimationFrame(() => this._loop());
     const dt = Math.min(this.clock.getDelta(), 0.2);
     this._update(dt);
+    if (this.spineCap) this.spineCap.visible = Math.abs(this.hinge.rotation.z) > 0.03;
     this._frameCamera();
     this.renderer.render(this.scene, this.camera);
   }
@@ -931,7 +1175,7 @@ export class PopupBook {
     window.addEventListener('pointerup', up);
     el.addEventListener('wheel', e => {
       e.preventDefault();
-      this.drag.zoom = Math.max(ORBIT_ZOOM_MIN, Math.min(ORBIT_ZOOM_MAX, this.drag.zoom * (1 - Math.sign(e.deltaY) * 0.08)));
+      this.drag.zoom = Math.max(ORBIT_ZOOM_MIN, Math.min(ORBIT_ZOOM_MAX, this.drag.zoom * (1 + Math.sign(e.deltaY) * 0.08)));
     }, { passive: false });
     this._unbindDrag = () => {
       el.removeEventListener('pointerdown', down);

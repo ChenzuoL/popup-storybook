@@ -5,11 +5,13 @@ Large books are expanded in approved slices, not by cloning one spread pattern u
 ## Chapter expansion
 
 1. Baseline the existing book: spread ids, passage ids, bookmark schema and final thumbnails.
-2. Get the creator to approve one representative chapter with its composition boards, 2D reconstruction proofs, visual and mechanical pattern. Agent QA is not that approval.
+2. Include chapter-sized master batches in the Step 1 scope; runs over ~10 spreads proceed one approved
+   master batch at a time. Use the board halt for approval, not a new playable-spread halt per chapter.
 3. Give each new chapter at least one chapter-specific focal asset and one chapter-specific environmental or distant asset unless the source deliberately calls for reuse.
 4. Keep new ids namespaced by chapter. Never renumber old spreads, passages or assets to make a list look contiguous.
 5. Regenerate a chapter contact sheet and inspect repeated poses, reused empty grounds, scale drift and chapter rhythm.
-6. Run chapter QA, then ask the creator before starting the next chapter: keep this chapter / open the next (named region or legend). Do not start the next chapter in the same turn.
+6. Run chapter QA and continue only through chapters selected for this run. Offer out-of-scope chapters
+   by name at delivery through next-steps; do not interrupt a chosen multi-chapter run with a new halt.
 
 Reuse is a production choice, not a validator loophole. A reused background is acceptable when the composition, lighting or event makes the reuse legible; record the reason in the storyboard.
 

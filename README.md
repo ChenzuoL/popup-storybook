@@ -7,16 +7,19 @@ A chapter holds multiple spreads. A spread is an open left/right page pair. Prin
 ## What it covers
 
 - **World reconnaissance first**: inventory this world's characters, locations and events, bind every chapter to them, and take character and location covers as identity references.
-- **Page-first composition**: the creator approves a full-spread composition board, then decompose it into board regions, produce/crop assets without moving those regions, reconstruct in 2D, then map into Three.js.
+- **One questionnaire, then composition masters**: style, chapter count, spreads per chapter, story, reading chrome and narration settled in one round; then one composition master per spread, approved in one board halt.
+- **qwen-image-2.1 in-place cut-outs**: every standee is cut out of its master at its exact position and size (hint box + named neighbours + BiRefNet/white key); the rect is measured, not typed.
+- **Every standee on its own z**: baseline-ordered unique depth inside back-to-front layer windows; struts stop short of the piece behind; folded cards stack by rank.
+- **World-dressed chrome on the original book model**: palette from the masters, type, chrome, surface, bar and labels from the world; the original book model takes the world's cloth colour and stage background.
 - **Versioned book contract**: schema v3 for new page-first books, with schema v2/v1 compatibility for existing books.
 - **Neutral page-turn state starter**: ordered spread navigation, forward/backward page ownership, input lock and deterministic turn seeking without story-specific Three.js geometry.
 - **Scene composition contract**: ground-only page surfaces plus explicit background, midground and foreground standees, with documented sparse-scene exceptions.
 - **Asset intake**: masks, normalized alpha bounds, provenance, identity references, light/dark inspection and physical scale intent.
-- **Paper engineering**: separate boards, page blocks, spine, static surfaces, moving leaf, folds, supports, paper backs and contact shadows.
+- **Paper engineering**: the original model — separate boards, page blocks, spine, hinged cover, static surfaces, moving leaf, folds, supports, paper backs and contact shadows — plus close-book, open-to-bookmark and front-first rise.
 - **Runtime QA contract**: adjacent turns in both directions, backward texture ownership, synchronized mechanisms, endpoint continuity and sampled collision checks.
 - **Page-depth QA**: paper-only comparison renders that catch page-block/spine occlusion and unsafe slope-based polygon offsets.
 - **Reading and audio**: bounded prose, ended-event advancement, manual cancellation, silent bookmark restore and versioned persistence.
-- **Creator halt points**: one questionnaire at Step 1; then one-question stops at the composition board, the first playable 3D spread, a missing-voice fallback, and the end of a chapter.
+- **Creator halt points**: exactly two — one questionnaire and one board approval halt; chapter expansion inside the chosen scope does not insert another stop.
 - **Incremental gates**: baseline, storyboard, assets, representative spread, changed state, chapter, page depth and full-book regression.
 
 ## Layout
@@ -24,13 +27,28 @@ A chapter holds multiple spreads. A spread is an open left/right page pair. Prin
 ```text
 SKILL.md                              production workflow and blocking requirements
 references/world-recon.md             Step 0: read the world, bind chapters, source identity references
-references/board-first.md              composition board, decomposition, 2D proof and one-shot rules
+references/questionnaire.md           Step 1 round: style tiles, chapters, spreads, story, chrome, narration
+references/composition-masters.md     masters per spread, staging recipe, board halt, decomposition, 2D proof
+references/qwen-cutout.md             qwen-image-2.1 in-place isolation, matte, intake and failure handling
+references/depth-and-placement.md     unique per-standee depth, struts, folded stacking
+references/theming.md                 world-derived theme: palette, type, chrome, book colours
+references/book-cover.md              dedicated cover generation, title set by the runtime, provenance
 references/engineering.md              rendering, navigation, composition and failure patterns
 references/runtime-contract.md         deterministic renderer adapter and ownership rules
 references/asset-pipeline.md           cutout, mask, bounds and provenance pipeline
 references/expansion-and-release.md    chapter expansion and live-publication checks
 references/qa-gates.md                 incremental QA gates and evidence requirements
 scripts/scaffold.mjs                   schema v3 book, proof placeholders and runtime scaffold
+scripts/qwen-isolate.mjs               cut board items out of the master with qwen-image-2.1 (+ BiRefNet)
+scripts/matte.py                       alpha, measured boardRect, cutouts/masks, contact + recomposition sheets
+scripts/place-scene.mjs                derive scene[] with unique per-standee depth
+scripts/palette.py                     theme palette from the approved masters
+scripts/shoot.mjs                      headless Chrome QA shots + report via the runtime's #qa= entry
+scripts/probe-live.mjs                 re-run the runtime probes on the published Work's CDN build
+scripts/flicker-check.py               z-fighting check from two shots of one grazing view nudged ~0.07°
+scripts/pack-assets.py                 WebP standees / JPEG page art and cover, start-up size budget
+scripts/duplicate-spread.mjs           labelled test copies of a spread (no new assets) for multi-spread turn QA; --remove
+scripts/lib/hint_mask.py               hint-box input for qwen, and a coordinate grid for reading hints
 scripts/world-survey.cjs               world inventory, state verdict and binding resolution
 scripts/validate-book-v3.cjs           schema v3 board-first production validator
 scripts/validate-book-v2.cjs           schema v2 asset-first production validator
@@ -39,6 +57,7 @@ scripts/audit-assets.cjs               asset path, mask, bounds and provenance a
 scripts/reconstruct-board.mjs          2D board overlay and placement proof
 scripts/runtime-contract-check.cjs     turn ownership, synchrony, collision and endpoint checks
 scripts/verify-depth-report.cjs        page-interior occlusion report verifier
+scripts/test-runtime-motion.cjs        guards: one hinge, one rise curve, gutter split, progressive binding
 scripts/test-skill.cjs                 complete reusable skill self-test
 templates/book-v3.json                 schema v3 page-first contract
 templates/runtime/                    page-turn, board mapping and Three.js runtime

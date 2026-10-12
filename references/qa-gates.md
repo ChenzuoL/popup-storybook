@@ -45,16 +45,19 @@ QA is part of production, not a final ceremony. Run the smallest relevant gate i
 **When:** after the storyboard and before final standee generation; rerun whenever the scene brief,
 world references, composition board or visual composition changes.
 
-- Generate the **representative** spread's board first, not a batch of every spread.
+- Generate one master **per spread in this run's scope** (chapter by chapter when the run is longer
+  than ~10 spreads), using the staging recipe in `composition-masters.md`.
 - The board is a layout master, not `pageArt` and not the final flattened scene.
 - Confirm the board has the intended aspect, framing, focal subject, relative scale, left/right page
-  relationship, foreground crop, midground subject and distant layer.
+  relationship, foreground crop, midground subject and distant layer. The image is a front-view
+  pop-up diorama: visible floor line, air between cutouts, and no essential subject bisected by gutter.
 - Record one stable `compositionBoard.sourceWork`, local file, canvas and `status: "review"` per
   changed spread. A later generated image may not silently replace it.
 - Inspect the board for invented or missing elements. Extra petals, clouds or haze become explicit
   atmosphere records or are deliberately excluded; they do not disappear into an unnamed crop.
-- **Hand the board to the creator and stop.** Agent inspection is not approval. Do not start Gate 2b
-  or any standee generation in the same turn.
+- **Hand all masters to the creator together and stop** — the one board halt. Agent inspection is not
+  approval. Do not start Gate 2b or any cutting in the same turn. Redraw requests regenerate only the
+  named spreads.
 
 **Exit:** the creator has approved the board (`status: "approved"`) as the sole visual layout source
 for each changed spread.
@@ -64,8 +67,9 @@ for each changed spread.
 **When:** after each approved board and before producing the corresponding assets.
 
 - Produce `boardItems` for every deliberate character, location, building, tree, prop, background
-  curtain and atmosphere element. Each has a stable id, material reference, pixel `boardRect`, role,
-  layer, page side, depth band and crop/regenerate decision.
+  curtain and atmosphere element. Each has a stable id, material reference, role, layer, page side,
+  `cutMode`, `subject`, `label`, a rough `hint` box (isolate modes) and `identityRef` where an atom
+  cover exists. `boardRect` is measured by `matte.py` (authored only for curtains / crops).
 - Confirm every production scene item points to one board item through `boardItemId` and declares
   `placementSource: "board"`. Do not hand-write a replacement anchor after board approval.
 - Check the ground rule: horizontal page-ground features remain `pageArt`; vertical structures and
@@ -78,14 +82,28 @@ for each changed spread.
 
 ## Gate 2: Asset Intake
 
-**When:** after every generation/crop/background-removal batch, before placing the assets.
+**When:** after every `qwen-isolate.mjs` + `matte.py` batch, before placing the assets.
 
+- Open `docs/qa/<spread>-standees.png` and `<spread>-recompose.png`. Every cut holds exactly one
+  element; the recomposition reads as the master (same positions and sizes, nobody missing or doubled).
+- Compare characters with their atom covers; re-cut drift with `--items=<id> --identity --force`.
 - Inspect source and processed asset over light/dark backgrounds.
 - Check alpha, full silhouette, no clipped hair/hands/feet/tails/roots, no words/watermarks, no rectangular residue, no duplicate/malformed anatomy.
 - Record visible/alpha bounds and intended scale. Compare at least one asset against an in-scene scale reference.
 - If a processing service crops/reframes output, recalibrate cell coordinates; never reuse source-sheet cell coordinates blindly.
 
 **Exit:** each accepted asset has a stable id, local file, role, dimensions/provenance and scale intent. Reject or repair failures now.
+
+## Gate 2d: Unique Depth
+
+**When:** after `place-scene.mjs`, and whenever a board item, layer or depth window changes.
+
+- `scripts/validate-book-v3.cjs` (draft is enough) reports no shared depth and no layer inversion.
+- `spread.depthCalibration.order` reads back to front the way the master does (backdrop, far figures,
+  near figures, props, foreground strip).
+- In the 3D shots, `report.json` → `depthAudit` is empty and `collisions` has no `standee:` hits.
+
+**Exit:** every standee on every changed spread stands on its own z.
 
 ## Gate 2c: 2D Reconstruction
 
@@ -113,21 +131,46 @@ Only then may the spread enter 3D.
   order must survive the board-to-book mapping. Board y is not raw Three.js z.
 - Turn into and out of the spread in both directions at endpoints and intermediate progress.
 - Use canvas-pixel checks only as a blank-render guard; inspect screenshots as well.
-- Confirm grab-the-object drag: inverted axes, yaw wide enough to walk around the book, pitch above
-  the table, scroll-up zooms in. Confirm the reading chrome matches the Step 1 choice.
-- **Hand the first playable Work to the creator and stop.** Agent screenshots are not approval. Ask:
-  hand feel is fine, continue remaining pages / change drag or reading chrome first / stop on this page.
+- Confirm grab-the-object drag: inverted axes, yaw wide enough to walk round to the back (±2.55 rad),
+  pitch above the book (0.28…1.48 rad), scroll-up zooms in. Confirm the reading chrome matches the
+  Step 1 choice.
+- Run `node scripts/shoot.mjs --root=<book> --spread=<i>` and open every PNG: the bar never covers the
+  book; the closed cover crop; the **whole opening sequence** (`opening10…95`, `profile20…80`) reads as
+  one hinge — the front cover and the left half of the block lift together up and over the spine,
+  nothing fanning out of the gutter or sliding (`leftStackScaleX: 1`) — and the whole scene rising
+  together with the paper, never in batches, left-page pieces turning with their page
+  (`floatingStandees: 0` in every frame); `closing30/60` show it lying down the same way;
+  multi-spread: `turn20/50/80` and `turnBack50` (needs ≥ 2 spreads — duplicate spread 1 as labelled
+  test copies when the brief has one); `reclosed.png` matches `closed.png` (open → close returns to
+  the initial state); **every sampled frame has zero collisions** (`shoot.mjs` fails the view
+  otherwise); standees keep visible depth separation and rise together on one curve; plain backs follow the
+  alpha silhouette (except an intentional rectangular curtain); the mid-turn leaf carries its
+  standees; mobile 390×844 is legible.
+- The closed book reads as a hardcover: cover board with squares, the dedicated cover art
+  (`book-cover.md`) with a legible title in its calm third, no visible air between cover and block in
+  `closedSide` / `closedLow` / `closedBack`.
+- Flicker: `python3 scripts/flicker-check.py <shots>/closedSide.png <shots>/closedSideJ.png` and the same
+  for `closedLow` — each pair is one grazing view nudged by ~0.07°; more than 0.5% of the book's pixels
+  changing means two surfaces share a plane (z-fighting). Blocking.
+- Start-up: `python3 scripts/pack-assets.py --book=data/book.json` passes its budget (default 2.5 MB
+  loaded at start), and the closed book is on screen before binding finishes.
+- After publishing, run `node scripts/probe-live.mjs --url=<live Work URL>`: the CDN build must pass the
+  same probes. A local pass is not a live pass.
+- Confirm the theme is this world's (palette from the masters, `derivedFrom` written) and the chrome
+  matches the Step 1 answer.
+- This is the agent's gate, not a creator halt. Fix and reshoot until it passes, then continue to the
+  remaining spreads in the same run.
 
-**Exit:** the creator has approved composition, drag, chrome and paper mechanics. Propagate this pattern
-only after that confirmation.
+**Exit:** the representative spread passes its shots and runtime probes; propagate the pattern.
 
 ## Gate 3a: Narration Fallback
 
-**When:** as soon as Step 1 chose voiced narration and `generate` has no speech model, or a narration
-file fails to generate. Before labeling the player or shipping silent pages.
+**When:** a narration file fails to generate after the creator chose recorded voice in Step 1 (the
+round only offers voice options that exist, so a missing model is settled there).
 
-- Do not silently switch to browser `speechSynthesis` or omit the missing-file label.
-- Ask once: browser voice, labeled in the UI / silent this page / wait for files. Stop the turn.
+- Retry the file. Do not silently switch to browser `speechSynthesis` or omit the missing-file label.
+- If it still fails, this is a hard block: ask once — browser voice, labelled / silent this page /
+  wait for files — and stop.
 - If they pick browser voice, the player must say so in the creator's language (e.g. 「浏览器朗读（这一页没有配音文件）」).
 
 **Exit:** the creator has chosen the fallback. Record it on the book; do not treat it as a recorded voice.
@@ -148,24 +191,24 @@ file fails to generate. Before labeling the player or shipping silent pages.
 
 ## Gate 5: Chapter
 
-**When:** after all spreads in one chapter are assembled, before starting the next chapter in a chapter-by-chapter workflow.
+**When:** after all spreads in each chapter selected for this run are assembled.
 
 - Click actual UI arrows through the chapter and over both boundaries.
 - Confirm one click means exactly one spread and repeated clicks during the turn are ignored.
 - Read all current-spread passages in the UI. If audio exists, play real files through same-spread passages and across a page turn.
 - Check directory jumps, chapter labels, thumbnails, mobile/desktop layout and silent bookmark restoration.
 - Review a contact sheet for rhythm, distinct composition, scale consistency and accidental repeated pose/layout.
-- **Ask the creator before starting the next chapter.** Keep this chapter as it is / open the next,
-  naming the region or legend. Stop the turn. Do not storyboard or generate the next chapter here.
+- Continue to the next chapter in scope without asking — the chapter count was settled in Step 1.
+  Chapters beyond the run's scope are offered at delivery through next-steps, by name.
 
-**Exit:** chapter status is recorded as passed, passed with named limitations, or blocked; and the
-creator has said whether to open the next chapter. Do not call the whole book complete.
+**Exit:** chapter status is recorded as passed, passed with named limitations, or blocked. Do not call
+the whole book complete when only some chapters are.
 
 ## Gate 5a: Page Depth and Occlusion
 
 **When:** after page-block, page-surface, spine, material, camera or render-order changes; rerun before publication when any shared renderer code changes.
 
-- Render front, low-angle, normal oblique and side cameras with the full scene.
+- Render front, low-angle, normal oblique, under-book and side cameras with the full suspended scene.
 - Render the same camera set with page blocks, spine and standees hidden so only printed page surfaces remain.
 - Sample a grid of interior page pixels and compare color/alpha against the paper-only baseline. Report camera, side, normalized point, threshold and hit class.
 - Reject broad slope-based `polygonOffset` on printed pages. Fixed units may be used only with a recorded reason and evidence.
@@ -200,8 +243,10 @@ from residual risk.
 | --- | --- |
 | New chapter, cast or event | 0b, 1, 5, 6 before publish |
 | Story text, split or order | 1, 5, 6 before publish |
-| Composition board or spread brief | 2a, 2b, 2c, 3, 4, 5, 6 |
-| Board region, asset identity or crop mode | 2b, 2, 2c, 3, 4, 5, 6 |
+| Composition board or spread brief | 2a, 2b, 2, 2d, 2c, 3, 4, 5, 6 |
+| Board item, hint, asset identity or cut mode | 2b, 2, 2d, 2c, 3, 4, 5, 6 |
+| Depth window / manual depth | 2d, 2c, 3, 4 |
+| Theme | 3 (shots), 5 desktop/mobile |
 | New generated/cropped asset | 2, 2c, 4; 3 if new visual form |
 | Position, scale, pose or reveal | 4, then 5 at chapter finish |
 | Page turn, book structure or carrier transform | 3, 4 for all affected neighbors, 5a, 6 |

@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { isolatePrompt, preRemovePrompt, labelOf } from './lib/isolate-prompts.mjs';
+const item = { id: 'ron', label: 'Ron', cutMode: 'isolate', subject: 'the red-haired boy at the right', preRemove: ['the brass trunk'] };
+const p = isolatePrompt(item, { neighbours: ['the brass trunk'] });
+assert.match(p.prompt, /Remove the brass trunk/);
+assert.match(p.prompt, /exactly the same position, size, pose/);
+assert.match(p.prompt, /pure white/);
+assert.match(isolatePrompt(item, { withIdentity: true }).prompt, /second image shows what this subject looks like/);
+assert.match(isolatePrompt({ ...item, cutMode: 'curtain', remove: ['the figures'] }).prompt, /Remove the figures/);
+assert.match(preRemovePrompt(item).prompt, /complete Ron naturally/);
+assert.equal(labelOf({ subject: 'a red-haired boy holding a suitcase' }), 'a red-haired boy');
+assert.throws(() => isolatePrompt({ id: 'x', cutMode: 'isolate', subject: '' }), /subject/);
+console.log('PASS qwen prompt recipes: in-place, neighbor removal, identity, curtains and entangled pre-remove');

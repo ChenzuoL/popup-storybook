@@ -5,6 +5,40 @@
   "title": "Untitled Page-First Paper Storybook",
   "language": "zh",
   "adaptation": "Original adaptation note.",
+  "style": {
+    "medium": "replace-with-the-printed-medium-chosen-at-step-1",
+    "styleId": "replace-with-style-library-id-or-world",
+    "note": "The book's own printed medium. Never written into manifest.worldConfig.visualStyle."
+  },
+  "theme": {
+    "derivedFrom": "replace: which world cues and which board palette this theme came from (genre, era, tone, cover, scripts/palette.py output)",
+    "palette": {
+      "paper": "#efe6d3",
+      "paperDeep": "#e3d7bb",
+      "ink": "#2b241f",
+      "inkSoft": "#6a5c4b",
+      "accent": "#a63328",
+      "cloth": "#6f2a25",
+      "table": "#8a7458"
+    },
+    "typography": {
+      "display": "song",
+      "body": "song"
+    },
+    "chrome": "sidebar",
+    "readerSide": "right",
+    "surface": "grain",
+    "shape": "soft",
+    "bar": "floating",
+    "book": {
+      "background": "#e3d7bb"
+    }
+  },
+  "narration": {
+    "mode": "none",
+    "autoTurn": true,
+    "rate": 1
+  },
   "worldBinding": {
     "worldId": "replace-with-the-current-world-id",
     "state": "populated",
@@ -30,14 +64,24 @@
     "coordinateUnits": "book"
   },
   "boardToBook": {
-    "profile": "paper-book-v1",
+    "profile": "paper-book-v2",
     "canonicalCamera": "front-oblique",
     "gutter": 0.06,
-    "depthBands": {
-      "background": 0.28,
-      "midground": 0.55,
-      "foreground": 0.82
-    }
+    "depthWindows": {
+      "background": [
+        0.1,
+        0.34
+      ],
+      "midground": [
+        0.4,
+        0.7
+      ],
+      "foreground": [
+        0.75,
+        0.97
+      ]
+    },
+    "minDepthGap": 0.02
   },
   "bookmarks": {
     "schemaVersion": 1,
@@ -61,7 +105,8 @@
       "provenance": {
         "sourceType": "generated",
         "sourceRef": "replace-with-cover-record",
-        "notes": "Replace placeholder."
+        "notes": "Replace with the dedicated cover (references/book-cover.md).",
+        "recipe": "book-cover"
       }
     },
     {
@@ -93,7 +138,9 @@
         "sourceType": "generated",
         "sourceRef": "replace-with-generation-record",
         "notes": "Replace placeholder."
-      }
+      },
+      "maxWorldWidth": 1.776,
+      "maxWorldHeight": 0.2214
     },
     {
       "id": "subject-standee",
@@ -112,7 +159,9 @@
         "sourceType": "generated",
         "sourceRef": "replace-with-generation-record",
         "notes": "Replace placeholder."
-      }
+      },
+      "maxWorldWidth": 0.2891,
+      "maxWorldHeight": 0.651
     },
     {
       "id": "foreground-standee",
@@ -131,7 +180,9 @@
         "sourceType": "generated",
         "sourceRef": "replace-with-generation-record",
         "notes": "Replace placeholder."
-      }
+      },
+      "maxWorldWidth": 0.2544,
+      "maxWorldHeight": 0.1953
     }
   ],
   "spreads": [
@@ -165,7 +216,8 @@
           768
         ],
         "coordinateSpace": "full-spread",
-        "status": "draft"
+        "status": "draft",
+        "url": "https://replace-with-the-board-work-image-url"
       },
       "boardItems": [
         {
@@ -182,8 +234,10 @@
           "layer": "background",
           "pageSide": "spread",
           "depthBand": "background",
-          "cutMode": "crop",
-          "required": true
+          "cutMode": "curtain",
+          "required": true,
+          "subject": "the distant scenery across the whole width — replace with what the board shows",
+          "rectLocked": true
         },
         {
           "id": "board-subject",
@@ -199,8 +253,10 @@
           "layer": "midground",
           "pageSide": "right",
           "depthBand": "midground",
-          "cutMode": "regenerate",
-          "required": true
+          "cutMode": "isolate",
+          "required": true,
+          "subject": "replace with the character exactly as the board shows them (hair, clothes, what they hold, where they stand)",
+          "identityRef": "https://replace-with-the-character-atom-cover-url"
         },
         {
           "id": "board-foreground",
@@ -216,8 +272,9 @@
           "layer": "foreground",
           "pageSide": "right",
           "depthBand": "foreground",
-          "cutMode": "crop",
-          "required": true
+          "cutMode": "isolate-key",
+          "required": true,
+          "subject": "replace with the low foreground prop as the board shows it"
         }
       ],
       "reconstruction": {
@@ -228,6 +285,28 @@
       },
       "scene": [
         {
+          "id": "backdrop-boarded",
+          "assetId": "backdrop-standee",
+          "boardItemId": "board-backdrop",
+          "placementSource": "board",
+          "coordinateSpace": "spread",
+          "crossGutter": true,
+          "side": "right",
+          "layer": "background",
+          "anchor": [
+            0.5,
+            0.22
+          ],
+          "depthRank": 0,
+          "maxWidth": 2,
+          "maxHeight": 0.221354,
+          "mechanism": "hinge",
+          "reveal": {
+            "start": 0.45,
+            "end": 0.95
+          }
+        },
+        {
           "id": "subject-boarded",
           "assetId": "subject-standee",
           "boardItemId": "board-subject",
@@ -236,32 +315,12 @@
           "side": "right",
           "layer": "midground",
           "anchor": [
-            0.232,
+            0.230469,
             0.55
           ],
-          "maxWidth": 0.326,
-          "maxHeight": 0.651,
-          "mechanism": "hinge",
-          "reveal": {
-            "start": 0.45,
-            "end": 0.95
-          }
-        },
-        {
-          "id": "backdrop-boarded",
-          "assetId": "backdrop-standee",
-          "boardItemId": "board-backdrop",
-          "placementSource": "board",
-          "coordinateSpace": "spread",
-          "crossGutter": true,
-          "side": "left",
-          "layer": "background",
-          "anchor": [
-            0.5,
-            0.28
-          ],
-          "maxWidth": 2,
-          "maxHeight": 0.28,
+          "depthRank": 1,
+          "maxWidth": 0.325521,
+          "maxHeight": 0.651042,
           "mechanism": "hinge",
           "reveal": {
             "start": 0.45,
@@ -277,11 +336,12 @@
           "side": "right",
           "layer": "foreground",
           "anchor": [
-            0.6,
-            0.82
+            0.601563,
+            0.86
           ],
-          "maxWidth": 0.286,
-          "maxHeight": 0.195,
+          "depthRank": 2,
+          "maxWidth": 0.286458,
+          "maxHeight": 0.195313,
           "mechanism": "hinge",
           "reveal": {
             "start": 0.45,
@@ -296,10 +356,47 @@
           "text": "Replace this sample with the adapted passage.",
           "audio": null
         }
-      ]
+      ],
+      "depthCalibration": {
+        "rule": "unique z per standee: layer windows back-to-front, baseline (y+h) order inside a layer, minimum gap enforced",
+        "windows": {
+          "background": [
+            0.1,
+            0.34
+          ],
+          "midground": [
+            0.4,
+            0.7
+          ],
+          "foreground": [
+            0.75,
+            0.97
+          ]
+        },
+        "minGap": 0.02,
+        "order": [
+          {
+            "id": "backdrop-boarded",
+            "assetId": "backdrop-standee",
+            "z": 0.22
+          },
+          {
+            "id": "subject-boarded",
+            "assetId": "subject-standee",
+            "z": 0.55
+          },
+          {
+            "id": "foreground-boarded",
+            "assetId": "foreground-standee",
+            "z": 0.86
+          }
+        ]
+      }
     }
   ],
   "covers": {
-    "front": "cover-art"
+    "front": "cover-art",
+    "subtitle": "",
+    "titlePlacement": "top"
   }
 }

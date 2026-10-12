@@ -19,7 +19,7 @@ const book = {
     ],
     scene: [
       { id: 'scene-a', assetId: 'a', boardItemId: 'board-a', placementSource: 'board', coordinateSpace: 'page', side: 'left', anchor: [0.6, 0.55], maxWidth: 0.4, maxHeight: 0.5 },
-      { id: 'scene-b', assetId: 'b', boardItemId: 'board-b', placementSource: 'board', coordinateSpace: 'page', side: 'right', anchor: [0.45, 0.82], maxWidth: 0.5, maxHeight: 0.44 }
+      { id: 'scene-b', assetId: 'b', boardItemId: 'board-b', placementSource: 'board', coordinateSpace: 'page', side: 'right', anchor: [0.45, 0.86], maxWidth: 0.5, maxHeight: 0.44 }
     ]
   }],
   assets: [
