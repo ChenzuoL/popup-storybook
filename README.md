@@ -1,165 +1,78 @@
-# Pop-Up Storybook
+<div align="center">
+  <a href="https://neta.art">
+    <img src="assets/neta-icon.png" alt="Neta Studio" width="112" height="112">
+  </a>
 
-An agent skill for building browser-based 3D paper pop-up storybooks with continuous page turns, page-owned cut-paper standees and deterministic production QA.
+  <h1>Pop-Up Storybook</h1>
 
-A chapter holds multiple spreads. A spread is an open left/right page pair. Printed page art supplies ground and low detail; independent transparent standees supply distant scenery, subjects and foreground props. A turn is one continuously transforming leaf, not a jump between duplicate books.
+  <p><em>Turn a world into a real readable pop-up book: hardcover boards, page blocks, a curling leaf, and cut-paper standees that rise off the page as you turn it.</em></p>
 
-## What it covers
+  <p>
+    <a href="https://neta.art"><img alt="Made for Neta Studio" src="https://img.shields.io/badge/MADE%20FOR-Neta%20Studio-111111?style=for-the-badge"></a>
+    <a href="SKILL.md"><img alt="Skill" src="https://img.shields.io/badge/type-skill-2858AD?style=for-the-badge"></a>
+    <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-EB7E51?style=for-the-badge"></a>
+    <a href="SKILL.md"><img alt="Version" src="https://img.shields.io/badge/0.2.0-2563eb?style=for-the-badge&label=version"></a>
+  </p>
+</div>
 
-- **World reconnaissance first**: inventory this world's characters, locations and events, bind every chapter to them, and take character and location covers as identity references.
-- **One questionnaire, then composition masters**: style, chapter count, spreads per chapter, story, reading chrome and narration settled in one round; then one composition master per spread, approved in one board halt.
-- **qwen-image-2.1 in-place cut-outs**: every standee is cut out of its master at its exact position and size (hint box + named neighbours + BiRefNet/white key); the rect is measured, not typed.
-- **Every standee on its own z**: baseline-ordered unique depth inside back-to-front layer windows; struts stop short of the piece behind; folded cards stack by rank.
-- **World-dressed chrome on the original book model**: palette from the masters, type, chrome, surface, bar and labels from the world; the original book model takes the world's cloth colour and stage background.
-- **Versioned book contract**: schema v3 for new page-first books, with schema v2/v1 compatibility for existing books.
-- **Neutral page-turn state starter**: ordered spread navigation, forward/backward page ownership, input lock and deterministic turn seeking without story-specific Three.js geometry.
-- **Scene composition contract**: ground-only page surfaces plus explicit background, midground and foreground standees, with documented sparse-scene exceptions.
-- **Asset intake**: masks, normalized alpha bounds, provenance, identity references, light/dark inspection and physical scale intent.
-- **Paper engineering**: the original model — separate boards, page blocks, spine, hinged cover, static surfaces, moving leaf, folds, supports, paper backs and contact shadows — plus close-book, open-to-bookmark and front-first rise.
-- **Runtime QA contract**: adjacent turns in both directions, backward texture ownership, synchronized mechanisms, endpoint continuity and sampled collision checks.
-- **Page-depth QA**: paper-only comparison renders that catch page-block/spine occlusion and unsafe slope-based polygon offsets.
-- **Reading and audio**: bounded prose, ended-event advancement, manual cancellation, silent bookmark restore and versioned persistence.
-- **Creator halt points**: exactly two — one questionnaire and one board approval halt; chapter expansion inside the chosen scope does not insert another stop.
-- **Incremental gates**: baseline, storyboard, assets, representative spread, changed state, chapter, page depth and full-book regression.
 
-## Layout
+<p align="center">
+  <img src="assets/hero.jpg" width="720" alt="An opened pop-up book: a cut-paper station scene standing off the page inside a hardcover book">
+</p>
+<p align="center"><sub>A spread from this skill: every standee cut from its composition master and standing at its own depth · the scene rises with the page</sub></p>
+
+
+Build an actual readable Three.js book — hardcover boards, two page blocks, a curling leaf, and paper standees that rise off the page. Dressed for the world it comes from, delivered as a published Web Work with real page turns.
+
+## Highlights
+
+- 🎯 **When to pick it** — The user wants a pop-up book, a paper-cut picture book, or a turnable story book for a world they have. Triggers: 立体书, 纸雕绘本, 翻页立体书, pop-up book, paper storybook.
+- 📦 **What you get** — A published Web Work with a real 3D book: one questionnaire (style, chapters, spreads, story, chrome, narration), one composition master per spread, every standee cut out of its master with qwen-image-2.1, each on its own depth, a dedicated titled cover, and world-themed reading chrome. Comes with the same runtime as this skill's `templates/`, so any world can be bound into it.
+- 🌍 **Where it runs** — Inside a Neta Studio world, through the skill picker. It reads the world first, then builds.
+- 🚫 **Out of scope** — A branching adventure or choose-your-own-adventure game (that is a playable game, not a book); a static PDF or flat illustrated pages; a manufacturing-ready paper-engineering plan.
+
+## How it works
 
 ```text
-SKILL.md                              production workflow and blocking requirements
-references/world-recon.md             Step 0: read the world, bind chapters, source identity references
-references/questionnaire.md           Step 1 round: style tiles, chapters, spreads, story, chrome, narration
-references/composition-masters.md     masters per spread, staging recipe, board halt, decomposition, 2D proof
-references/qwen-cutout.md             qwen-image-2.1 in-place isolation, matte, intake and failure handling
-references/depth-and-placement.md     unique per-standee depth, struts, folded stacking
-references/theming.md                 world-derived theme: palette, type, chrome, book colours
-references/book-cover.md              dedicated cover generation, title set by the runtime, provenance
-references/engineering.md              rendering, navigation, composition and failure patterns
-references/runtime-contract.md         deterministic renderer adapter and ownership rules
-references/asset-pipeline.md           cutout, mask, bounds and provenance pipeline
-references/expansion-and-release.md    chapter expansion and live-publication checks
-references/qa-gates.md                 incremental QA gates and evidence requirements
-scripts/scaffold.mjs                   schema v3 book, proof placeholders and runtime scaffold
-scripts/qwen-isolate.mjs               cut board items out of the master with qwen-image-2.1 (+ BiRefNet)
-scripts/matte.py                       alpha, measured boardRect, cutouts/masks, contact + recomposition sheets
-scripts/place-scene.mjs                derive scene[] with unique per-standee depth
-scripts/palette.py                     theme palette from the approved masters
-scripts/shoot.mjs                      headless Chrome QA shots + report via the runtime's #qa= entry
-scripts/probe-live.mjs                 re-run the runtime probes on the published Work's CDN build
-scripts/flicker-check.py               z-fighting check from two shots of one grazing view nudged ~0.07°
-scripts/pack-assets.py                 WebP standees / JPEG page art and cover, start-up size budget
-scripts/duplicate-spread.mjs           labelled test copies of a spread (no new assets) for multi-spread turn QA; --remove
-scripts/lib/hint_mask.py               hint-box input for qwen, and a coordinate grid for reading hints
-scripts/world-survey.cjs               world inventory, state verdict and binding resolution
-scripts/validate-book-v3.cjs           schema v3 board-first production validator
-scripts/validate-book-v2.cjs           schema v2 asset-first production validator
-scripts/validate-book.cjs              schema v1 validator and v2/v3 dispatcher
-scripts/audit-assets.cjs               asset path, mask, bounds and provenance audit
-scripts/reconstruct-board.mjs          2D board overlay and placement proof
-scripts/runtime-contract-check.cjs     turn ownership, synchrony, collision and endpoint checks
-scripts/verify-depth-report.cjs        page-interior occlusion report verifier
-scripts/test-runtime-motion.cjs        guards: one hinge, one rise curve, gutter split, progressive binding
-scripts/test-skill.cjs                 complete reusable skill self-test
-templates/book-v3.json                 schema v3 page-first contract
-templates/runtime/                    page-turn, board mapping and Three.js runtime
-templates/book-v2.json                 existing schema v2 contract
-templates/book.json                   legacy schema v1 contract
+world recon → ONE questionnaire (style, chapters, spreads, story, chrome, narration)
+→ storyboard → one composition master per spread → ONE board halt
+→ qwen-image-2.1 in-place cut-outs → matte + measure → unique-depth placement → 2D proof
+→ world theme → assemble the book → headless QA shots → publish
 ```
 
-## Step 0 — read the world before designing in it
+The creator stops the run exactly twice: the questionnaire, and the board halt. Everything after the
+board is agent work until the Work is published and verified on its live CDN build.
 
-A storybook is a work *about* a world. Find out what already exists, then bind the book to it:
+**The mechanism (what a reader sees).** The book opens on one hinge — the front cover and the left half
+of the block turn together up and over the spine, nothing fanning out of the gutter or sliding. The
+closed book is on screen at once and textures bind behind it. Every standee rises on one curve driven by
+the page angle — no batches, no per-piece delay; left-page pieces turn with their page, and
+gutter-spanning pieces are cut at the gutter into two halves. Closing is the same curve backwards.
+
+## Quick start
+
+This is a **Neta Studio skill**, not a Node app. There is no `npm start`.
+
+1. Open a world in [Neta Studio](https://neta.art).
+2. Copy this folder to `.agents/skills/popup-storybook/` so `SKILL.md` sits at that root.
+3. Reload. Pick **popup-storybook** in the skill picker.
 
 ```bash
-node scripts/world-survey.cjs --world=/path/to/world
-node scripts/world-survey.cjs --world=/path/to/world --binding=/path/to/data/book.json
+cp -R popup-storybook path/to/world/.agents/skills/popup-storybook
 ```
 
-The first command inventories the world's atoms by type, reports which have a ready cover, lists the
-works already made from them, and returns a `populated` / `sparse` / `empty` verdict. The second
-resolves a book's `worldBinding` block against that inventory: every chapter must name materials that
-really exist, and every character should have a cover, because that cover is its identity reference.
-
-A **populated** world is consumed: bind chapters to its characters, locations and events. A **sparse**
-world is partly consumed and partly extended. An **empty** world reverses the direction — the book
-creates the world's materials, lists them in `authored[]`, and writes them back as atoms so the next
-work inherits them.
-
-## Start a new book
-
-From the skill root:
+Working on the skill itself:
 
 ```bash
-node scripts/scaffold.mjs /path/to/book-root
-node scripts/validate-book-v3.cjs /path/to/book-root/data/book.json \
-  --production \
-  --root=/path/to/book-root
-node scripts/reconstruct-board.mjs \
-  --book=/path/to/book-root/data/book.json --root=/path/to/book-root \
-  --spread=chapter-01-spread-01 \
-  --out=/path/to/book-root/docs/qa/reconstruction.svg
+node scripts/test-skill.cjs                 # full self-test (13 suites)
+node scripts/scaffold.mjs path/to/book-root # schema v3 book + runtime scaffold
 ```
 
-The scaffold includes a runnable Three.js runtime, a neutral page-turn state, board-to-book mapper,
-composition-board placeholder and reconstruction proof placeholders. Replace all placeholders with
-approved local assets, source boards and visual review records before shipping.
+> [!NOTE]
+> Contract, inputs, halts, and acceptance live in [SKILL.md](SKILL.md), with the pipeline details in
+> [`references/`](references) and the reusable runtime in [`templates/`](templates). Do not copy
+> branded UI, slogans, or third-party assets.
 
-## Validate and audit
+## License
 
-New page-first schema v3:
-
-```bash
-node scripts/validate-book-v3.cjs data/book.json --production --root=.
-node scripts/audit-assets.cjs data/book.json --production --root=.
-node scripts/reconstruct-board.mjs --book=data/book.json --root=. --spread=<spread-id> --out=docs/qa/<spread-id>.svg
-```
-
-Existing schema v2 and legacy schema v1:
-
-```bash
-node scripts/validate-book-v2.cjs data/book.json --production --root=.
-node scripts/validate-book.cjs data/book.json --production --root=.
-```
-
-The generic validator dispatches schema v2 and v3 manifests to their matching validators. New
-production code should invoke `validate-book-v3.cjs` explicitly so board status and reconstruction
-requirements are visible. Reconstruction reports distinguish structural pass from pending visual
-review; a placeholder or unreviewed proof is not a production pass.
-
-## Runtime and visual QA
-
-A renderer adapter that follows `references/runtime-contract.md` can be tested with:
-
-```bash
-node scripts/runtime-contract-check.cjs \
-  --adapter=/absolute/path/to/runtime-adapter.cjs \
-  --book=/absolute/path/to/data/book.json \
-  --out=/absolute/path/to/qa/runtime-report.json
-```
-
-Validate a browser-produced page-depth report with:
-
-```bash
-node scripts/verify-depth-report.cjs /absolute/path/to/qa/page-depth/report.json
-```
-
-These checks complement browser screenshots and human review. Finite collision sampling is not alpha-contour proof, and a nonblank canvas does not prove that the printed page is visible.
-
-## Skill self-test
-
-```bash
-node scripts/test-skill.cjs
-```
-
-The suite covers legacy, v2 and v3 validators, world reconnaissance across all three world states,
-binding resolution, board-to-book mapping, 2D reconstruction, scaffold/runtime files, the neutral
-page-turn state, forward/backward runtime ownership, endpoint regression rejection and page-depth
-report rejection.
-
-## Notes
-
-- The reusable contract is **ordered spreads + page surfaces + page-owned attachments + passages + optional audio**. It is not tied to a story, visual style, language, page count or id scheme.
-- This skill creates a visually simulated paper book, not printable dielines or manufacturing calculations.
-- Use a branching narrative/game skill when choices change the path.
-- Generated voices must be original and must not be presented as real children. Audit pronunciation and emotion by listening.
-- Keep credentials out of manifests and provenance records.
-- “One shot” means one user-facing run with internal repair and blocking gates; it does not mean blind image generation or silent manual anchor edits.
+[MIT](LICENSE) · Built for [Neta Studio](https://neta.art).
