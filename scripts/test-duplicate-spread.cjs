@@ -36,7 +36,7 @@ assert.deepEqual(b.spreads[1].boardItems[1].occludes, ['train-c2'], 'occlusion r
 assert.equal(b.spreads[1].depthEvidence.occlusion[0].front, 'ron-c2');
 assert.equal(b.spreads[1].scene[0].assetId, 'bg-s1', 'assets are reused, not regenerated');
 assert.equal(b.spreads[1].passages[0].audio, null, 'copies do not point at the source audio');
-assert.ok(b.spreads[1].testCopyOf && /测试复制页/.test(b.spreads[1].title));
+assert.ok(b.spreads[1].testCopyOf && /test copy/.test(b.spreads[1].title));
 r = run('--remove');
 assert.equal(r.status, 0, r.stderr);
 b = JSON.parse(fs.readFileSync(file, 'utf8'));

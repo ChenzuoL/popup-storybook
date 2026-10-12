@@ -171,7 +171,7 @@ round only offers voice options that exist, so a missing model is settled there)
 - Retry the file. Do not silently switch to browser `speechSynthesis` or omit the missing-file label.
 - If it still fails, this is a hard block: ask once — browser voice, labelled / silent this page /
   wait for files — and stop.
-- If they pick browser voice, the player must say so in the creator's language (e.g. 「浏览器朗读（这一页没有配音文件）」).
+- If they pick browser voice, the player must say so in the creator's language (e.g. "Browser voice (no recording for this page)").
 
 **Exit:** the creator has chosen the fallback. Record it on the book; do not treat it as a recorded voice.
 

@@ -4,3 +4,9 @@ Thumbs.db
 node_modules/
 __pycache__/
 *.pyc
+
+node_modules/
+.DS_Store
+.env
+.env.*
+*.pem

@@ -100,7 +100,7 @@ assert.ok(invented.errors.some(e => e.includes('not an atom')), 'an invented nam
 
 const authoredOk = checkBinding(bookWith({
   worldId: 'world_x', state: 'sparse',
-  chapters: [{ chapterId: 'chapter-01', characters: ['全新角色'], locations: [], events: [] }], authored: ['全新角色']
+  chapters: [{ chapterId: 'chapter-01', characters: ['A Brand New Character'], locations: [], events: [] }], authored: ['A Brand New Character']
 }), live);
 assert.deepEqual(authoredOk.errors, [], 'a name declared in authored[] must be accepted');
 

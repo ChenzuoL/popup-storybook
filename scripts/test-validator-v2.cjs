@@ -21,5 +21,5 @@ assert(check(b=>b.worldBinding.state='guessed','worldBinding.state'));
 assert(check(b=>b.worldBinding.chapters[0].chapterId='chapter-99','no such chapter'));
 assert(check(b=>b.worldBinding.chapters=[],'chapter-01 has no entry'));
 assert(check(b=>{b.worldBinding.state='empty';b.worldBinding.authored=[]},'authored[] must list'));
-assert(check(b=>b.worldBinding.chapters[0].characters='博丽灵梦','must be an array of names'));
+assert(check(b=>b.worldBinding.chapters[0].characters='Reimu Hakurei','must be an array of names'));
 console.log('PASS v2 template draft/production and 16 negative contract cases');

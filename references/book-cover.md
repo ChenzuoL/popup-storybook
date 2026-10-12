@@ -32,7 +32,7 @@ cover itself, in the theme's display face, over a soft band in the reserved thir
 ```json
 "covers": {
   "front": "cover-art",
-  "title": "九又四分之三站台 · 纸雕立体书",
+  "title": "Platform Nine and Three-Quarters · Paper Pop-Up Book",
   "subtitle": "",
   "titlePlacement": "top",
   "titleColor": "#f6efdf"

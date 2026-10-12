@@ -3,7 +3,7 @@
 // Board rectangles are [x, y, width, height] in board pixels. The board controls x and size.
 // Depth (anchor[1], the Three.js z of the standee's fold line, 0 = back edge, 1 = front edge) is
 // assigned per item so that NO TWO STANDEES ON A SPREAD SHARE A Z. Shared depth bands are what make
-// neighbouring props interpenetrate ("穿模"): a trunk and a rail strip on one band occupy one plane.
+// neighbouring props interpenetrate ("clip through"): a trunk and a rail strip on one band occupy one plane.
 //
 // Rule, per spread:
 //   1. layers keep their order: every background item < every midground item < every foreground item;

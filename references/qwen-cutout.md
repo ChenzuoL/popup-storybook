@@ -29,7 +29,7 @@ approved master (https URL)
 {
   "id": "ron",
   "assetId": "ron-s1",
-  "materialRef": "character:罗恩·韦斯莱",
+  "materialRef": "character:Ron Weasley",
   "role": "character", "layer": "midground", "depthBand": "midground", "pageSide": "right",
   "cutMode": "isolate",
   "subject": "the red-haired boy in the grey robe standing behind the big brass-cornered trunk, one hand on its handle",

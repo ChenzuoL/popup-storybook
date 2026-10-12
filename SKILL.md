@@ -22,6 +22,48 @@ Resolve paths below relative to this SKILL.md. Before building, read `references
 `runtime-contract.md`, `qa-gates.md` and `expansion-and-release.md` when their step comes up. After
 changing this skill, run `node scripts/test-skill.cjs`.
 
+## Contract
+
+### When to pick it
+The user wants an actual readable 3D paper pop-up storybook for a world: one composition master per spread, standees cut out in place and placed on their own depth, assembled into a Three.js book with real page turns and a world theme.
+
+### Stop when the pick is wrong
+A branching adventure (that is an AVG), a static PDF, or a manufacturing-ready paper-engineering plan is not this skill. Web creation / editing / publishing goes through `create-web-work`; questions go through `questionnaire`; artwork through `generate`.
+
+### Input
+Required: the world to dress from (real atoms bound in `book.worldBinding`) and the creator's Step 1 answers.
+Optional: chapter count, spreads per chapter, reading chrome, narration mode.
+
+### Transform
+world recon → **one** questionnaire round (style, chapters, spreads, story, chrome, narration) → storyboard → one composition master per spread in parallel → **board halt** → qwen-image-2.1 in-place cut-outs → matte + measure → unique-depth placement → 2D proof → world theme → assemble the book → headless QA shots → publish via `create-web-work` → probe the live build.
+
+### Deliver
+A published, browser-playable Three.js book (schema v3): hardcover boards, real page turns, paper standees rising on their own depth, dressed in the world's theme — handed over through `interaction-components`. Plus the QA shots / `report.json` and a passing live probe.
+
+### Explicitly not doing
+Branching adventure / choose-your-own-path; a static PDF; manufacturing-ready paper engineering; writing the book's printed medium into `worldConfig.visualStyle`; cutting from a `review` (unapproved) master; shared depth bands; agent inspection standing in for creator approval; publishing before the board halt and before the live probe passes.
+
+### Stop when input is missing
+The brief names none of the Step 1 items (style, chapters, spreads, story, chrome, narration) — ask one round. No world / no atoms when the spread binding is required. A hard block only: no credits, a model gone, or a chosen recorded-narration file that cannot be produced.
+
+## Cases
+
+### should
+「把这个世界做成一本立体书，三章，每章两个跨页。」
+Expect: this skill — one questionnaire round, one master per spread, the board halt, assembled and published with a passing live probe.
+
+### shouldNot
+「做一个能选剧情的冒险。」
+Expect: not this skill — a branching adventure is an AVG, not a pop-up book.
+
+### missing
+"Make a pop-up book." (style / chapters / spreads / story / chrome / narration all unnamed)
+Expect: stop; ask one questionnaire round. One missing item is a chat question.
+
+### theme
+「换成暗色纸雕，只讲那一场战斗。」
+Expect: same skill — new world binding and theme; the two halts and the depth rules stay.
+
 ## Routing
 
 - Studio web creation, editing and publishing go through `create-web-work`. Updating an existing book
@@ -62,13 +104,13 @@ narration question only offers what exists.
 
 One round, most important first (`references/questionnaire.md` has the full spec and an example):
 
-1. **风格** — tiles: the world's own style first, then 3–5 paper-friendly style-library styles with
+1. **Style** — tiles: the world's own style first, then 3–5 paper-friendly style-library styles with
    their (inspected) thumbnails;
-2. **做多少章** — cards grounded in the world's events;
-3. **每章几个跨页**;
-4. **讲哪段故事** — the world's real events by name (skip if the brief named it);
-5. **阅读界面** — paper sidebar / text band under the book / almost none;
-6. **朗读** — only the options available now.
+2. **Chapter count** — cards grounded in the world's events;
+3. **Spreads per chapter**;
+4. **Which story** — the world's real events by name (skip if the brief named it);
+5. **Reading chrome** — paper sidebar / text band under the book / almost none;
+6. **Narration** — only the options available now.
 
 No image before the round returns. Carry answers into `book.style`, storyboard size,
 `worldBinding`, `theme.chrome` and `narration.mode`.
@@ -237,7 +279,7 @@ It reads the Work iframe's real CDN URL from the Studio page and reruns the runt
 
 ## Reference implementation
 
-The 哈利波特（正牌） world's `works/webs/hogwarts-letter-popup` is the case this version was rebuilt
+The Harry Potter (canon) world's `works/webs/hogwarts-letter-popup` is the case this version was rebuilt
 from: qwen isolation from an approved master, BiRefNet alpha, and the per-item depth fix after a
 trunk and a rail strip cut through each other on a shared band. Treat it as a case study: its
 assets, copy and story are that world's.

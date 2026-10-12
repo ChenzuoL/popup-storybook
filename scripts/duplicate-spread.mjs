@@ -17,8 +17,7 @@ const args = Object.fromEntries(process.argv.slice(2).map(a => {
 if (!args.book) { console.error('Usage: node scripts/duplicate-spread.mjs --book=data/book.json [--source=0] [--copies=2] [--new-chapter-from=N] | --remove'); process.exit(2); }
 const book = JSON.parse(readFileSync(args.book, 'utf8'));
 const save = () => writeFileSync(args.book, JSON.stringify(book, null, 2) + '\n');
-const zh = /^zh/.test(book.language || 'zh');
-const label = n => (zh ? `测试复制页 ${n}` : `test copy ${n}`);
+const label = n => `test copy ${n}`;
 
 if (args.remove) {
   const before = book.spreads.length;
@@ -44,7 +43,7 @@ for (let k = 0; k < copies; k++) {
   const n = book.spreads.length + 1;                 // 1-based position of the new spread
   if (newChapterFrom != null && n >= newChapterFrom && !book.chapters.find(c => c.testCopy && c.id === chapter)) {
     chapter = `chapter-${String(book.chapters.length + 1).padStart(2, '0')}`;
-    book.chapters.push({ id: chapter, title: zh ? `测试章节（复制页）` : 'Test chapter (copies)', testCopy: true });
+    book.chapters.push({ id: chapter, title: 'Test chapter (copies)', testCopy: true });
     const bind = book.worldBinding?.chapters?.find(c => c.chapterId === src.chapterId);
     if (bind) book.worldBinding.chapters.push({ ...JSON.parse(JSON.stringify(bind)), chapterId: chapter });
   }

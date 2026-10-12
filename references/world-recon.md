@@ -36,9 +36,9 @@ Add a `worldBinding` block to the book manifest:
   "chapters": [
     {
       "chapterId": "chapter-01",
-      "characters": ["博丽灵梦", "雾雨魔理沙"],
-      "locations": ["博丽神社"],
-      "events": ["红雾异变"]
+      "characters": ["Reimu Hakurei", "Marisa Kirisame"],
+      "locations": ["Hakurei Shrine"],
+      "events": ["the Scarlet Mist Incident"]
     }
   ],
   "authored": []

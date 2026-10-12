@@ -1,6 +1,6 @@
 # Composition masters — one board per spread, the only layout source
 
-A pop-up spread is built from one **composition master** (构图母版): a single full-spread image that
+A pop-up spread is built from one **composition master**: a single full-spread image that
 answers "what does this open page look like?" — framing, who stands where, relative scale, the
 distant backdrop, the low foreground. Every standee is later cut **out of it** in place
 (`qwen-cutout.md`), so the master must be drawn to be cut.
@@ -59,7 +59,7 @@ they say so.
 Hand all masters of this run over at once (interaction-components, one card per board Work), then ask
 **one** question in the creator's language and stop:
 
-> 这几张构图母版定下来就开始扣图上书 / 重画其中几张（说哪几张、改什么）/ 整体换个方向
+> Once these composition masters are settled I start cutting them onto the book / redraw a few of them (say which, and what to change) / change direction entirely
 
 - "approve" → set every `status: "approved"` and run the rest of the pipeline in the next turn without
   stopping again.

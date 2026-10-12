@@ -30,7 +30,7 @@ fails: body text `ink` on `paper` needs ≥ 4.5:1; `accent` buttons carry `paper
   "surface": "grain",
   "shape": "soft",
   "bar": "floating",
-  "labels": { "open": "拆开这封信" },
+  "labels": { "open": "Open this letter" },
   "book": { "background": "#cbbba6" }
 }
 ```
@@ -44,7 +44,7 @@ fails: body text `ink` on `paper` needs ≥ 4.5:1; `accent` buttons carry `paper
 | `surface` | `grain` `ruled` `linen` `plain` `dark` | reader panel paper |
 | `shape` | `square` `soft` `round` | austere/archival → square; storybook → soft; children → round |
 | `bar` | `floating` `flush` `ink` | the bottom bar: card / full-width band / dark cloth strip |
-| `labels` | any UI string override (`open`, `resume`, `close`, `index`, …) | give the open button the world's verb ("拆开这封信", "推开神社的门") |
+| `labels` | any UI string override (`open`, `resume`, `close`, `index`, …) | give the open button the world's verb ("Open this letter", "Push open the shrine gate") |
 | `palette.cloth` | `#rrggbb` | also colours the book's hardcover boards |
 | `book.background` | `#rrggbb` (default `palette.paperDeep`) | the 3D canvas behind the book; match it to the stage so the canvas does not read as a box |
 

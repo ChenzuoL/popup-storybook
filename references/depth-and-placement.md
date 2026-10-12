@@ -2,7 +2,7 @@
 
 A pop-up spread is a row of paper planes standing at different distances from the reader. When two
 standees share one depth they occupy one plane, and wherever they overlap in x they cut through each
-other (穿模). The first production book shipped exactly this: a trunk, a case, a letter and a
+other (interpenetration). The first production book shipped exactly this: a trunk, a case, a letter and a
 rail strip all on `foreground = 0.82`. **No two standees on a spread may share a z.**
 
 ## The rule (implemented in `templates/runtime/board-to-book.mjs`)
